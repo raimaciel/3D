@@ -120,3 +120,19 @@ body {
 .roi-presets span{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
 .roi-presets b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 @media(max-width:600px){.roi-presets{gap:8px}.roi-presets span{font-size:11px}.roi-presets b{font-size:14px}}
+
+/* Tela de entrada. Fica antes de qualquer dado aparecer. */
+.acesso-tela{min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:#eef3f7}
+.acesso-card{width:100%;max-width:440px;background:white;border:1px solid #dfe7ee;border-radius:14px;padding:32px;box-shadow:0 10px 30px #10283e0f}
+.acesso-marca{display:flex;align-items:center;gap:13px;margin-bottom:26px}
+.acesso-marca .brand-mark{color:#082c41;display:grid;place-items:center}
+.acesso-marca strong{font-size:20px;letter-spacing:-.7px;color:#173249}
+.acesso-marca strong span{color:#12a3b0;margin-left:3px}
+.acesso-marca small{display:block;font-size:10px;letter-spacing:1.4px;color:#7d91a2;margin-top:3px}
+.acesso-titulo{font-size:24px;letter-spacing:-.6px}
+.acesso-sub{font-size:14px;line-height:1.6;color:#6d8395;margin-top:8px}
+.acesso-campos{display:grid;gap:17px;margin:23px 0}
+.acesso-erro{background:#fff0ee;border:1px solid #efb3ab;color:#a0423b;border-radius:8px;padding:13px 15px;font-size:14px;line-height:1.55;margin-top:19px}
+.acesso-aviso{display:flex;gap:10px;background:#fff8ec;border:1px solid #f0d9ae;color:#8a6420;border-radius:8px;padding:13px 15px;font-size:13px;line-height:1.6;margin-top:17px}
+.acesso-aviso svg{flex-shrink:0;margin-top:2px}
+.acesso-carregando{text-align:center;color:#6d8395;font-size:14px;padding:22px 0}

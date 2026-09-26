@@ -92,7 +92,7 @@ O plano era extrair o motor de preço, provar com teste que nada quebrou, e só 
 
 Verificado em Chromium, em 1400 px e em 390 px: a tela carrega sem erro de JavaScript, os números batem com o motor, e o escopo dos campos se comporta como o rótulo promete — num lote de 20, o acabamento multiplicou por 20 e o preparo ficou parado.
 
-**O que falta agora é o login**, que bloqueia qualquer publicação, e depois a hospedagem.
+**O login está feito.** Falta a hospedagem.
 
 ## O OUTRO ponto de partida: o Gestão 3D (JÁ NO REPOSITÓRIO, em `gestao-3d/`)
 
@@ -106,7 +106,7 @@ O dono **já tinha um sistema de gestão quase completo**, feito no construtor d
 
 ### Três problemas graves, verificados na prática
 
-**1. Não existe autenticação nenhuma.** `app/chatgpt-auth.ts` existe mas **nenhum arquivo o importa** — é código morto. Provado com o servidor rodando localmente:
+**1. Não existia autenticação nenhuma — RESOLVIDO.** *(O relato abaixo fica como registro do que foi encontrado; veja "Autenticação" mais adiante para como ficou.)* `app/chatgpt-auth.ts` existe mas **nenhum arquivo o importa** — é código morto. Provado com o servidor rodando localmente:
 
 - `GET /api/workspace` sem cabeçalho nenhum devolveu **HTTP 200 com o banco inteiro**.
 - `POST` de um cliente novo via `curl`, sem login, **gravou e persistiu** (revisão foi de 0 para 1).
@@ -216,6 +216,32 @@ A recomendação anterior deste arquivo (Next.js + Supabase + Vercel) foi escrit
 - **Volume esperado de pedidos**: não perguntado. Muda o quanto de automação se justifica.
 - **ABS/ASA na A1 aberta**: a máquina não tem câmara fechada e essas peças empenam. Se a empresa as vende, o risco de refugo deveria estar no preço. Levantado com o dono, ainda sem resposta.
 
+## Autenticação (feita)
+
+Sessão própria, guardada no D1. Nada de serviço externo: menos uma peça para o dono manter.
+
+| Arquivo | Papel |
+|---|---|
+| `lib/auth.ts` | senha e token. Sem nenhuma referência à Cloudflare, por isso é testável no Node. |
+| `lib/sessao.ts` | sessão no banco, cookie, e as guardas `exigirUsuario` / `exigirEquipe` / `origemInvalida`. |
+| `lib/limite.ts` | trava de força bruta por e-mail. |
+| `app/api/auth/*` | `setup`, `login`, `logout`, `me`. |
+| `app/acesso.tsx` | a tela de entrada e a de primeiro acesso. |
+
+Decisões que **não devem ser desfeitas sem pensar**:
+
+- **Senha**: PBKDF2-SHA256, que é o que o Workers oferece nativamente, com sal por senha. O número de iterações fica **gravado dentro do hash**, então dá para aumentá-lo depois sem invalidar senha nenhuma — o login antigo confere com o número dele e regrava no formato novo.
+- **O cookie leva o token; o banco guarda o SHA-256 dele.** Quem ler a tabela `sessions` não consegue se passar por ninguém.
+- **Origin é obrigatório** em toda requisição que altera dados. A checagem antiga (`if(origin && ...)`) aceitava Origin ausente, o que a tornava inútil.
+- **Mesma mensagem e mesmo tempo** para e-mail inexistente e senha errada. O tempo importa tanto quanto a mensagem: sem um hash descartável no caminho do e-mail inexistente, o relógio entrega quais e-mails existem.
+- **Primeiro acesso**: a rota `setup` só funciona enquanto não há nenhum usuário, e a condição está dentro do próprio `INSERT`, o que fecha a corrida de dois cadastros ao mesmo tempo. Se a variável `SETUP_TOKEN` estiver configurada no provedor, ela também é exigida.
+
+**Risco que sobra, e é real:** entre publicar e criar o primeiro acesso, quem abrir o endereço pode criá-lo no seu lugar. Ou se configura `SETUP_TOKEN` antes de publicar, ou se cria o acesso imediatamente depois. A tela avisa isso em destaque.
+
+**Cuidado com o plano do Workers:** o login gasta ~30 ms, quase tudo em PBKDF2. O plano grátis limita CPU por requisição; se o login começar a falhar por isso, baixe `ITERACOES_PADRAO` em `lib/auth.ts` — as senhas já gravadas continuam valendo.
+
+**Ainda não existe portal do cliente.** O papel `cliente` existe no banco, mas `exigirEquipe` barra qualquer um que não seja `admin` ou `equipe`. Abrir para cliente depende do banco relacional: com o estado todo num JSON só, não há como mostrar a ele apenas o pedido dele.
+
 ## Segurança que este projeto exige de verdade
 
 O cliente acessa o sistema. "Cliente vê apenas os próprios pedidos" não é detalhe de interface — tem que valer no banco, com RLS, não apenas escondendo botões na tela. Um pedido vazado é dado comercial de outro cliente.
@@ -226,10 +252,15 @@ O cliente acessa o sistema. "Cliente vê apenas os próprios pedidos" não é de
 calculadora-3d.html     a calculadora de orçamento, funcionando
 precificacao.js         o motor de preço da calculadora, lógica pura
 teste-precificacao.js   52 testes do motor, sem dependências
-gestao-3d/              o sistema de gestão existente
-  lib/precificacao.ts        o motor de preço UNIFICADO (é este que vale)
-  lib/precificacao.teste.ts  33 testes do motor unificado
-  lib/domain.ts              o cálculo ANTIGO do Gestão 3D, ainda em uso pela tela
+gestao-3d/              o sistema de gestão
+  lib/precificacao.ts        o motor de preço unificado (é este que vale)
+  lib/precificacao.teste.ts  33 testes do motor
+  lib/auth.ts                senha e token de sessão
+  lib/auth.teste.ts          36 testes de autenticação
+  lib/sessao.ts              sessão no banco e guardas das rotas
+  lib/limite.ts              trava de força bruta
+  app/acesso.tsx             tela de entrada e de primeiro acesso
+  scripts/teste-acesso.sh    prova que a API está fechada
 CLAUDE.md               este arquivo
 README.md               só o título
 ```
@@ -248,7 +279,7 @@ npx wrangler d1 execute site-creator-d1 --config dist/server/wrangler.json \
 pnpm start      # sobe em http://127.0.0.1:8787
 ```
 
-A migração só é necessária na primeira vez; sem ela a API responde 503.
+As migrações só são necessárias na primeira vez; sem elas a API responde 503. **São duas**: a segunda cria as tabelas de login.
 
 **Rodar os testes do motor unificado** (dentro de `gestao-3d/`):
 
@@ -256,7 +287,13 @@ A migração só é necessária na primeira vez; sem ela a API responde 503.
 node --experimental-strip-types lib/precificacao.teste.ts
 ```
 
-Sai `33 passaram, 0 falharam`. Verificado. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
+Sai `33 passaram, 0 falharam`. E os da autenticação:
+
+```
+node --experimental-strip-types lib/auth.teste.ts
+```
+
+Sai `36 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 

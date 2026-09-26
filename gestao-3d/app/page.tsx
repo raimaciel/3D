@@ -1,2 +1,2 @@
-import Manager from "./manager";
-export default function Home(){return <Manager/>}
+import Acesso from "./acesso";
+export default function Home(){return <Acesso/>}
