@@ -1,17 +1,63 @@
 import { z } from 'zod';
+import { calcularPreco } from './precificacao.ts';
 export const money=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
 const num=z.number().finite().min(0).max(10000000);
 const name=z.string().trim().min(1,'Preencha o nome.').max(200);
 const txt=z.string().max(2000).default('');
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v+'T12:00:00Z')),'Data inválida');
-export const calculationSchema=z.object({weight:num,hours:num,kgPrice:num,power:num,energyRate:num,machineRate:num,maintenance:num,paint:z.boolean(),paintRate:num,finish:num,packaging:num,laborMinutes:num,laborRate:num,loss:num.max(100),custom:z.boolean(),customDescription:txt,customMinutes:num,customRate:num,customScope:z.enum(['pedido','peca']),quantity:z.number().int().min(1).max(100000),price:num});
+// Campos do orcamento. O nome de cada um diz o ESCOPO de proposito: confundir
+// "por peca" com "uma vez" foi a origem de um erro de 20x na calculadora antiga.
+//   weight / hours  -> POR PECA (o produto cadastrado guarda assim)
+//   power           -> WATTS (era kW antes; a etiqueta da impressora vem em W)
+//   nao existe mais "price": o preco agora e CALCULADO a partir do ROI.
+export const calculationSchema=z.object({
+  quantity:z.number().int().min(1).max(100000),
+  weight:num,hours:num,kgPrice:num,
+  machineRate:num,power:num,energyRate:num,maintenance:num,
+  paint:z.boolean(),paintRate:num,finish:num,
+  modelingHours:num,modelingRate:num,
+  custom:z.boolean(),customDescription:txt,customMinutes:num,customRate:num,
+  customScope:z.enum(['pedido','peca']),
+  finishMinutes:num,setupMinutes:num,laborRate:num,
+  packaging:num,loss:num.max(100),
+  tax:num.max(100),marketplace:num.max(100),fixedFee:num,roas:num,roi:num
+});
 export type Calculation=z.infer<typeof calculationSchema>;
-export const defaults:Calculation={weight:115,hours:6.3,kgPrice:100,power:.5,energyRate:1.1,machineRate:0,maintenance:1,paint:false,paintRate:2,finish:0,packaging:2,laborMinutes:0,laborRate:0,loss:0,custom:false,customDescription:'',customMinutes:0,customRate:0,customScope:'pedido',quantity:1,price:30};
+export const defaults:Calculation={
+  quantity:1,weight:115,hours:6.3,kgPrice:100,
+  machineRate:0,power:150,energyRate:1.1,maintenance:1,
+  paint:false,paintRate:2,finish:0,
+  modelingHours:0,modelingRate:0,
+  custom:false,customDescription:'',customMinutes:0,customRate:0,customScope:'pedido',
+  finishMinutes:0,setupMinutes:0,laborRate:0,
+  packaging:2,loss:0,
+  tax:0,marketplace:0,fixedFee:0,roas:0,roi:250
+};
 export function calculate(c:Calculation){
- const material=c.weight/1000*c.kgPrice*(1+c.loss/100),energy=c.hours*c.power*c.energyRate,machine=c.hours*c.machineRate,maintenance=(material+energy)*c.maintenance/100,finish=(c.paint?c.weight/100*c.paintRate:0)+c.finish,labor=c.laborMinutes/60*c.laborRate,custom=c.custom?c.customMinutes/60*c.customRate*(c.customScope==='peca'?c.quantity:1):0;
- const rows=[['Filamento',material*c.quantity],['Energia',energy*c.quantity],['Hora de máquina',machine*c.quantity],['Manutenção',maintenance*c.quantity],['Acabamento',finish*c.quantity],['Mão de obra',labor*c.quantity],['Embalagem',c.packaging],['Personalização',custom]] as [string,number][];
- const cost=money(rows.reduce((s,r)=>s+r[1],0)),revenue=money(c.price*c.quantity),profit=money(revenue-cost);
- return {rows,cost,revenue,profit,unitCost:c.quantity>0?cost/c.quantity:0,margin:revenue?profit/revenue*100:0,grams:c.weight*(1+c.loss/100)*c.quantity};
+ // A tela pede peso e tempo POR PECA; o motor trabalha com o total do trabalho.
+ // A conversao mora aqui, num lugar so, para nao se repetir nem divergir.
+ const r=calcularPreco({
+  quantidade:c.quantity,lote:c.quantity>1,
+  peso:c.weight*c.quantity,horas:c.hours*c.quantity,precoKg:c.kgPrice,
+  potencia:c.power,tarifaKwh:c.energyRate,taxaMaquina:c.machineRate,
+  manutencao:c.maintenance,
+  pintura:c.paint,taxaPintura:c.paintRate,acabamentoFixo:c.finish,
+  modelagemHoras:c.modelingHours,modelagemHora:c.modelingRate,
+  personalizacaoMin:c.custom?c.customMinutes:0,personalizacaoHora:c.customRate,
+  personalizacaoEscopo:c.customScope,
+  acabamentoMin:c.finishMinutes,preparoMin:c.setupMinutes,maoHora:c.laborRate,
+  embalagem:c.packaging,falha:c.loss,
+  imposto:c.tax,marketplace:c.marketplace,taxaFixa:c.fixedFee,roas:c.roas,roi:c.roi
+ });
+ const rows=Object.entries(r.itens).filter(([,v])=>v>0) as [string,number][];
+ const cost=money(r.custoTotal),revenue=money(r.preco*r.quantidade),profit=money(revenue-cost);
+ return {rows,cost,revenue,profit,
+  unitCost:r.custoPeca,unitPrice:r.preco,
+  margin:revenue?profit/revenue*100:0,
+  roiReal:r.roiReal,blocked:r.bloqueado,percFees:r.percTaxas,
+  discounts:Object.entries(r.descontos).filter(([,v])=>v>0) as [string,number][],
+  // Material que sai do estoque de fato, ja contando a perda esperada.
+  grams:c.weight*c.quantity*(1+c.loss/100)};
 }
 export function safeSupplierLink(value:unknown):string{if(typeof value!=='string'||!value.trim())return '';try{const u=new URL(value.trim());return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:''}catch{return ''}}
 const supplierLink=z.string().trim().max(2000).default('').refine(v=>v===''||!!safeSupplierLink(v),'Informe um link completo começando com https:// ou http://.');

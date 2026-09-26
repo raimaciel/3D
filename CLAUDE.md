@@ -67,6 +67,20 @@ Dois defeitos do modo lote foram encontrados, confirmados por teste e corrigidos
 
 A calculadora já define a marca, e o sistema deve seguir: azul-marinho `#132840`, turquesa `#1CB8C4`, fundo claro `#EEF2F6`, fontes **Sora** (títulos e números) e **Figtree** (texto). Tem tema claro e escuro funcionando e layout que já responde bem no celular.
 
+### Semânticas que divergiam e como ficaram
+
+Ao ligar a tela, apareceram diferenças de convenção entre os dois sistemas. Ficou assim, e **os rótulos da tela dizem o escopo de propósito** — confundir escopo foi a origem do erro de 20× na calculadora antiga:
+
+| | Como ficou | Observação |
+|---|---|---|
+| Peso e tempo | **por peça** | Como o Gestão 3D já fazia e como o produto cadastrado guarda. A conversão para o total do trabalho mora só em `calculate()`, em `lib/domain.ts`. |
+| Potência | **watts** | Era kW no Gestão 3D. O cadastro de impressora também mudou para W. |
+| Embalagem | **por peça** | **Mudança de comportamento**: o Gestão 3D cobrava uma vez por pedido. |
+| Acabamento | por peça | Campo novo, separado do preparo. |
+| Preparo | uma vez | Campo novo. |
+| Personalização | escopo escolhido | Mantido do Gestão 3D, que nisso era melhor. |
+| Preço | **calculado** | O campo de digitar preço não existe mais. |
+
 ### Onde a migração está
 
 O plano era extrair o motor de preço, provar com teste que nada quebrou, e só então construir o sistema em volta. **Os dois primeiros passos estão feitos:**
@@ -74,7 +88,11 @@ O plano era extrair o motor de preço, provar com teste que nada quebrou, e só 
 - `precificacao.js` — o motor, lógica pura, sem nenhuma referência a tela. Roda no navegador como `<script>` e no Node via `require`.
 - `teste-precificacao.js` — 52 testes, sem biblioteca nenhuma. Guarda a identidade central (lucro ÷ custo = ROI pedido) em 30 combinações de taxas, as duas correções, os escopos de trabalho, a regra da margem de falha, as travas de divisão por zero, e uma cópia da **fórmula original** para que qualquer divergência futura apareça como diferença explicada.
 
-Falta o passo 3: os cadastros. Ao construí-los, **use o motor, não reescreva o cálculo.**
+**O passo 3 também está feito**: a tela de precificação foi ligada ao motor. `lib/domain.ts` já não tem cálculo próprio — `calculate()` só adapta os campos da tela e delega. Os painéis de **Modelagem** e **Venda** (ROI, imposto, marketplace, taxa fixa, ROAS) são novos, e o preço saiu de campo digitado para número calculado.
+
+Verificado em Chromium, em 1400 px e em 390 px: a tela carrega sem erro de JavaScript, os números batem com o motor, e o escopo dos campos se comporta como o rótulo promete — num lote de 20, o acabamento multiplicou por 20 e o preparo ficou parado.
+
+**O que falta agora é o login**, que bloqueia qualquer publicação, e depois a hospedagem.
 
 ## O OUTRO ponto de partida: o Gestão 3D (JÁ NO REPOSITÓRIO, em `gestao-3d/`)
 
@@ -120,13 +138,15 @@ Os dados reais **não estão no pacote** — ficaram no D1 da hospedagem de orig
 
 Estas três fecham questões que estavam em aberto. São dele; não as reabra por conta própria.
 
-**1. A fórmula de preço da calculadora é a que vale.** *(motor já implementado em `gestao-3d/lib/precificacao.ts`; falta ligar a tela, que ainda usa o cálculo antigo de `lib/domain.ts`.)* O preço passa a ser **calculado a partir do ROI**, sobrevivendo a imposto, marketplace e ROAS, e não mais digitado à mão como no Gestão 3D. O motor é `precificacao.js`, que já está testado — leve-o para dentro do sistema, não reescreva.
+**1. A fórmula de preço da calculadora é a que vale.** *(FEITO: motor em `gestao-3d/lib/precificacao.ts`, tela ligada, verificada em navegador.)* O preço passa a ser **calculado a partir do ROI**, sobrevivendo a imposto, marketplace e ROAS, e não mais digitado à mão como no Gestão 3D. O motor é `precificacao.js`, que já está testado — leve-o para dentro do sistema, não reescreva.
 
 Interpretação aplicada, sujeita a correção dele: a decisão é sobre **como o preço é derivado**, não sobre quais custos existem. Então as linhas de custo que só o Gestão 3D tem (**manutenção** como % sobre material e energia, **pintura** por peso) devem ser preservadas como itens de custo adicionais — elas não conflitam com o método, só somam. O `customScope` (por pedido ou por peça) do Gestão 3D também é melhor que o equivalente da calculadora e deve ficar.
 
 Cuidado ao unificar: a potência é em **watts** na calculadora e em **kW** no Gestão 3D. Padronizar e converter os valores salvos, ou a conta erra em 1000×.
 
-**2. A hospedagem é a Cloudflare.** O app já foi feito para Workers + D1 + R2, então fica onde está. A recomendação anterior de Next.js + Supabase + Vercel, feita antes de o Gestão 3D aparecer, **está descartada**: migrar de stack jogaria fora um sistema que já funciona. O domínio `fabricando3d.com.br` aponta para a Cloudflare.
+**2. A hospedagem é a Cloudflare, usando tudo o que ela oferece.** Pedido do dono, textual: banco de dados, R2 para PDFs **e arquivos 3D do cliente (STL/3MF)**, geração de pedido em PDF e hospedagem do site — tudo lá.
+
+Isso traz uma lacuna concreta: `app/api/files/route.ts` hoje só aceita **imagem** (JPEG, PNG, WebP) de até **5 MB**. Arquivo 3D não passa: tipo diferente e tamanho maior. Ampliar essa rota é trabalho do passo de hospedagem. Para o PDF, a técnica da `calculadora-3d.html` (desenhar em canvas e montar os bytes do PDF à mão, sem biblioteca) já está no repositório e pode ser reaproveitada; o `manager.tsx` também já tem um modelo de impressão. O app já foi feito para Workers + D1 + R2, então fica onde está. A recomendação anterior de Next.js + Supabase + Vercel, feita antes de o Gestão 3D aparecer, **está descartada**: migrar de stack jogaria fora um sistema que já funciona. O domínio `fabricando3d.com.br` aponta para a Cloudflare.
 
 **3. Não há mais acesso à hospedagem original, e os dados antigos se perderam.** Consequências: o sistema **nasce vazio**, e **não é preciso escrever rotina de importação** — o que era trabalho previsto e deixou de ser. A empresa estava começando, então a perda é pequena.
 

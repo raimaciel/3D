@@ -110,3 +110,13 @@ body {
 
 .company-summary{display:flex;align-items:center;gap:16px;margin:4px 0 8px}.company-summary h3{font-size:18px;font-weight:650;color:#203e56;overflow-wrap:anywhere}.company-summary p{font-size:13px;color:#7890a2;margin-top:6px}.company-logo-preview{width:72px;height:72px;object-fit:contain;flex:0 0 72px;padding:6px;border:1px solid #dfe7ee;border-radius:9px;background:#f8fafc}.company-logo-empty{width:72px;height:72px;flex:0 0 72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#7890a2;background:#f2f7f9;border:1px dashed #cad8e1;border-radius:9px}.company-logo-empty span{font-size:10px}.company-details dd{max-width:68%;text-align:right;overflow-wrap:anywhere}.settings-export{grid-column:1/-1}.app-dialog input[type=file]{width:100%;min-height:43px;padding:9px 12px;border:1px solid #d6e0e9;border-radius:7px;background:#fcfdff;color:#395468;font-size:14px}.company-logo-row{display:flex;align-items:center;gap:14px;margin-top:14px}.spool-meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:9px;color:#70899b;font-size:11px;line-height:1.45}.spool-meta span+span{border-left:1px solid #dce6ec;padding-left:12px}
 @media(max-width:600px){.settings-export{grid-column:auto}.company-summary{align-items:flex-start}.company-details>div{align-items:flex-start}.company-details dd{max-width:64%}}
+
+/* Atalhos de ROI. Ficam num painel branco, entao nao podem reaproveitar
+   .suggestions, que foi desenhada para o cartao escuro do resultado. */
+.roi-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:20px}
+.roi-presets button{border:1px solid #d6e0e9;border-radius:8px;padding:12px 10px;text-align:center;background:#f7fafc;color:#537187;transition:.15s}
+.roi-presets button:hover{border-color:#0a98a8;background:#eef7f9}
+.roi-presets button[aria-pressed=true]{border-color:#0a98a8;background:#e6f6f8;color:#08707e}
+.roi-presets span{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
+.roi-presets b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+@media(max-width:600px){.roi-presets{gap:8px}.roi-presets span{font-size:11px}.roi-presets b{font-size:14px}}
