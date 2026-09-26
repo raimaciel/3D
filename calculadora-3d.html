@@ -249,13 +249,23 @@ input.money{font-variant-numeric:tabular-nums}
     </section>
 
     <section class="card">
+      <h2><i>✏️</i>Modelagem</h2>
+      <div class="grid">
+        <div><label for="modelaHoras">Tempo de modelagem</label><div class="field has-unit"><input id="modelaHoras" type="number" inputmode="decimal" min="0" step="0.5" value="0"><span class="unit">h</span></div></div>
+        <div><label for="modelaHora">Valor da hora de modelagem</label><div class="field has-unit"><input id="modelaHora" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$/h</span></div></div>
+        <p class="hint full">Só quando você modela a peça. Entra <b>uma vez no pedido</b>, não por peça: o arquivo é feito uma vez e serve para todas. Deixe 0 se o cliente mandou o arquivo pronto.</p>
+      </div>
+    </section>
+
+    <section class="card">
       <h2><i>🛠️</i>Trabalho e extras</h2>
       <div class="grid">
-        <div><label for="maoMin">Seu tempo na peça</label><div class="field has-unit"><input id="maoMin" type="number" inputmode="numeric" min="0" value="0"><span class="unit">min</span></div></div>
+        <div><label for="acabaMin">Acabamento, <b>por peça</b></label><div class="field has-unit"><input id="acabaMin" type="number" inputmode="numeric" min="0" value="0"><span class="unit">min</span></div></div>
+        <div><label for="preparoMin">Preparo, <b>uma vez</b></label><div class="field has-unit"><input id="preparoMin" type="number" inputmode="numeric" min="0" value="0"><span class="unit">min</span></div></div>
         <div><label for="maoHora">Valor da sua hora</label><div class="field has-unit"><input id="maoHora" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$/h</span></div></div>
-        <div><label for="falha">Margem de falha</label><div class="field has-unit"><input id="falha" type="number" inputmode="decimal" min="0" max="100" value="0"><span class="unit">%</span></div></div>
-        <div><label for="extras">Embalagem e extras</label><div class="field has-unit"><input id="extras" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$</span></div></div>
-        <p class="hint full">Tempo de preparo, remoção de suportes, lixa e embalagem. A margem de falha cobre impressões perdidas.</p>
+        <div><label for="extras">Embalagem, por peça</label><div class="field has-unit"><input id="extras" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$</span></div></div>
+        <div class="full"><label for="falha">Margem de falha</label><div class="field has-unit"><input id="falha" type="number" inputmode="decimal" min="0" max="100" value="0"><span class="unit">%</span></div></div>
+        <p class="hint full"><b>Acabamento</b> é o que você faz em cada peça: tirar suporte, lixar, montar — multiplica pela quantidade. <b>Preparo</b> é o que você faz uma vez no trabalho: fatiar, montar a mesa, trocar filamento. A <b>margem de falha</b> cobre impressão perdida: material, máquina e o seu tempo refeito.</p>
       </div>
     </section>
 
@@ -312,16 +322,17 @@ input.money{font-variant-numeric:tabular-nums}
 
 <div id="printArea" aria-hidden="true"></div>
 
+<script src="precificacao.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const brl = v => (isFinite(v) ? v : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const parseMoeda = str => { str = String(str).trim(); if(str.includes(',')) str = str.replace(/\./g,'').replace(',','.'); const v = parseFloat(str); return isNaN(v) ? 0 : v; };
 const fmtMoeda = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const num = id => { const el = $(id); if(el.classList.contains('money')) return parseMoeda(el.value); const v = parseFloat(String(el.value).replace(',','.')); return isNaN(v) ? 0 : v; };
-const campos = ['cliente','nome','peso','qtd','horas','minutos','material','precoKg','potencia','kwh','estado','marca','modelo','valorMaq','vidaMaq','maoMin','maoHora','falha','extras','imposto','taxa','taxaFixa','roas','roi'];
+const campos = ['cliente','nome','peso','qtd','horas','minutos','material','precoKg','potencia','kwh','estado','marca','modelo','valorMaq','vidaMaq','modelaHoras','modelaHora','acabaMin','preparoMin','maoHora','falha','extras','imposto','taxa','taxaFixa','roas','roi'];
 const padrao = {}; campos.forEach(c => padrao[c] = $(c).value);
 let modo = 'peca';
-const CORES = {Filamento:'#1CB8C4',Energia:'#F2B94B',Máquina:'#7E93AA',"Mão de obra":'#8A7CF0',Extras:'#4FD1A1',Falhas:'#E86A6A'};
+const CORES = {Filamento:'#1CB8C4',Energia:'#F2B94B',Máquina:'#7E93AA',Modelagem:'#8A7CF0',Preparo:'#4FB0F0',Acabamento:'#4FD1A1',Extras:'#D98CC4',Falhas:'#E86A6A'};
 
 // Dados da empresa: salvos à parte, não são zerados por "Restaurar padrões"
 let empresa = {nome:'', telefone:'', logo:'', logoW:0, logoH:0};
@@ -399,57 +410,43 @@ selMarca.addEventListener('change', () => { preencherModelos(selMarca.value); ca
 selModelo.addEventListener('change', () => { if(selModelo.value){ $('potencia').value = selModelo.value; } calcular(); });
 
 function calcular(){
-  const qtd = modo === 'lote' ? Math.max(1, Math.round(num('qtd'))) : 1;
-  const horas = num('horas') + num('minutos')/60;
-  const itens = {
-    Filamento: num('peso')/1000 * num('precoKg'),
-    Energia: num('potencia')/1000 * horas * num('kwh'),
-    Máquina: num('vidaMaq') > 0 ? num('valorMaq')/num('vidaMaq') * horas : 0,
-    "Mão de obra": num('maoMin')/60 * num('maoHora'),
-    Extras: num('extras') * qtd
-  };
-  const base = Object.values(itens).reduce((a,b)=>a+b,0);
-  itens.Falhas = (itens.Filamento + itens.Energia + itens.Máquina) * num('falha')/100;
-  const custoTotal = base + itens.Falhas;
-  const custoPeca = custoTotal / qtd;
+  const r = calcularPrecificacao({
+    lote: modo === 'lote', qtd: num('qtd'),
+    horas: num('horas'), minutos: num('minutos'),
+    peso: num('peso'), precoKg: num('precoKg'),
+    potencia: num('potencia'), kwh: num('kwh'),
+    valorMaq: num('valorMaq'), vidaMaq: num('vidaMaq'),
+    modelaHoras: num('modelaHoras'), modelaHora: num('modelaHora'),
+    acabaMin: num('acabaMin'), preparoMin: num('preparoMin'), maoHora: num('maoHora'),
+    extras: num('extras'), falha: num('falha'),
+    imposto: num('imposto'), taxa: num('taxa'), taxaFixa: num('taxaFixa'),
+    roas: num('roas'), roi: num('roi')
+  });
 
-  // Preço P tal que: P - P*imposto - P*marketplace - P/ROAS - taxaFixa - custo = custo * ROI
-  const imp = num('imposto')/100, mkt = num('taxa')/100, roas = num('roas');
-  const ads = roas > 0 ? 1/roas : 0;
-  const fixa = num('taxaFixa'), roi = num('roi')/100;
-  const perc = imp + mkt + ads;
-  const invalido = perc >= 0.95;
-  $('erro').classList.toggle('hidden', !invalido);
-  if(invalido) $('erro').textContent = `Imposto, marketplace e anúncios somam ${(perc*100).toFixed(0)}% do preço. Não sobra margem: aumente o ROAS ou reduza as taxas.`;
-  const preco = invalido ? 0 : (custoPeca*(1+roi) + fixa) / (1 - perc);
-  const desc = {
-    Imposto: preco*imp,
-    Marketplace: preco*mkt,
-    "Taxa fixa": invalido ? 0 : fixa,
-    Anúncios: preco*ads
-  };
-  const totalDesc = Object.values(desc).reduce((a,b)=>a+b,0);
-  const lucroPeca = preco - custoPeca - totalDesc;
+  $('erro').classList.toggle('hidden', !r.bloqueado);
+  if(r.bloqueado) $('erro').textContent = `Imposto, marketplace e an\u00fancios somam ${(r.percTaxas*100).toFixed(0)}% do pre\u00e7o. N\u00e3o sobra margem: aumente o ROAS ou reduza as taxas.`;
 
-  $('preco').innerHTML = brl(preco).replace(/^R\$\s?/, '<small>R$</small> ');
-  $('lblPreco').textContent = 'Preço de venda sugerido por peça';
-  $('subPreco').textContent = `${horas.toFixed(1).replace('.',',')} h de impressão` + (totalDesc ? `, já com taxas e anúncios` : '');
-  $('custo').textContent = brl(custoPeca);
-  $('ganho').textContent = brl(lucroPeca);
-  $('descontos').textContent = brl(totalDesc);
-  $('roiReal').textContent = custoPeca > 0 ? Math.round(lucroPeca/custoPeca*100).toLocaleString('pt-BR') + '%' : '0%';
-  $('rowsVenda').innerHTML = Object.entries(desc).filter(([,v]) => v > 0).map(([k,v]) =>
+  $('preco').innerHTML = brl(r.preco).replace(/^R\$\s?/, '<small>R$</small> ');
+  $('subPreco').textContent = `${r.horas.toFixed(1).replace('.',',')} h de impress\u00e3o` + (r.totalDescontos ? ', j\u00e1 com taxas e an\u00fancios' : '');
+  $('custo').textContent = brl(r.custoPeca);
+  $('ganho').textContent = brl(r.lucroPeca);
+  $('descontos').textContent = brl(r.totalDescontos);
+  $('roiReal').textContent = r.custoPeca > 0 ? Math.round(r.roiReal).toLocaleString('pt-BR') + '%' : '0%';
+  $('rowsVenda').innerHTML = Object.entries(r.descontos).filter(([,v]) => v > 0).map(([k,v]) =>
     `<li class="neg"><span class="dot" style="background:transparent;border:1.5px solid #7E93AA"></span>${k}<span class="v">${brl(v)}</span></li>`).join('');
   document.querySelectorAll('.presets button').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.roi) === num('roi')));
-  $('totLote').textContent = brl(preco*qtd);
-  $('lucroLote').textContent = brl(lucroPeca*qtd);
+  $('totLote').textContent = brl(r.preco*r.qtd);
+  $('lucroLote').textContent = brl(r.lucroPeca*r.qtd);
 
-  $('bar').innerHTML = Object.entries(itens).map(([k,v]) => `<span style="width:${custoTotal? v/custoTotal*100:0}%;background:${CORES[k]}" title="${k}"></span>`).join('');
-  $('rows').innerHTML = Object.entries(itens).map(([k,v]) =>
-    `<li><span class="dot" style="background:${CORES[k]}"></span>${k}<span class="v">${brl(v/qtd)}</span></li>`).join('');
+  // S\u00f3 mostra as linhas de custo que t\u00eam valor: com oito itens poss\u00edveis,
+  // listar zeros polui a tela e o or\u00e7amento em PDF.
+  const visiveis = Object.entries(r.itens).filter(([,v]) => v > 0);
+  $('bar').innerHTML = visiveis.map(([k,v]) => `<span style="width:${r.custoTotal? v/r.custoTotal*100:0}%;background:${CORES[k]}" title="${k}"></span>`).join('');
+  $('rows').innerHTML = visiveis.map(([k,v]) =>
+    `<li><span class="dot" style="background:${CORES[k]}"></span>${k}<span class="v">${brl(v/r.qtd)}</span></li>`).join('');
 
   try{ const d={modo}; campos.forEach(c=>d[c]=$(c).value); localStorage.setItem('calc3d',JSON.stringify(d)); }catch(e){}
-  return {preco, custoPeca, lucroPeca, qtd, horas, itens};
+  return r;
 }
 
 function setModo(m){
@@ -515,7 +512,7 @@ function desenharRecibo(logoImg){
   const cliente = $('cliente').value.trim();
   const mat = $('material').value || 'Não informado';
   const hoje = new Date().toLocaleDateString('pt-BR');
-  const rows = Object.entries(r.itens);
+  const rows = Object.entries(r.itens).filter(([,v]) => v > 0);
   const metaLinhas = (cliente?1:0) + 1;
 
   const S=2, W=700, PAD=26, HEAD=118, ROW=32;
