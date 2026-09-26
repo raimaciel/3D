@@ -16,7 +16,7 @@ A empresa **está começando e ainda não tem clientes**. O sistema nasce vazio:
 
 `calculadora-3d.html` é a calculadora de orçamento que o dono construiu antes deste projeto, trazida para cá **byte a byte, sem alteração**. Ela é o ponto de partida do sistema: o pedido dele é evoluí-la, não recomeçar.
 
-**O que ela é tecnicamente:** um único arquivo HTML com CSS e JavaScript embutidos, sem framework, sem build, sem dependência externa além das fontes do Google. Estado salvo em `localStorage` (três chaves: `calc3d`, `calc3d-empresa`, `calc3d-tema`). Gera PDF e PNG desenhando num `canvas` e montando os bytes do PDF à mão, sem biblioteca.
+**O que ela é tecnicamente:** uma página HTML com CSS e JavaScript embutidos, mais o motor de preço em `precificacao.js` ao lado. Sem framework, sem build, sem dependência externa além das fontes do Google. Estado salvo em `localStorage` (três chaves: `calc3d`, `calc3d-empresa`, `calc3d-tema`). Gera PDF e PNG desenhando num `canvas` e montando os bytes do PDF à mão, sem biblioteca.
 
 **Ela foi feita como Artifact do Claude** e depende de `window.claude.use('downloads')` para salvar arquivo, com fallback para download do navegador. Essa dependência **tem que sair** quando virar sistema — fora do app do Claude ela não existe.
 
@@ -29,17 +29,19 @@ Custos, por impressão:
 | Filamento | `peso(g) / 1000 × preço do rolo (R$/kg)` |
 | Energia | `potência(W) / 1000 × horas × tarifa (R$/kWh)` |
 | Máquina | `valor da impressora / vida útil(h) × horas` |
-| Mão de obra | `minutos / 60 × valor da hora` |
-| Extras | `embalagem e extras × quantidade` |
-| Falhas | `(Filamento + Energia + Máquina) × margem de falha %` |
+| Modelagem | `horas de CAD × valor da hora de modelagem` — uma vez no pedido |
+| Preparo | `minutos / 60 × valor da hora` — uma vez no trabalho |
+| Acabamento | `minutos × quantidade / 60 × valor da hora` — por peça |
+| Extras | `embalagem × quantidade` — por peça |
+| Falhas | `(Filamento + Energia + Máquina + Preparo + Acabamento) × margem de falha %` |
 
 `custo da peça = (soma de todos os itens) / quantidade`
 
 Preço de venda:
 
 ```
-preço = (custo × (1 + ROI)) + taxa fixa
-        ---------------------------------
+preço = (custo × (1 + ROI)) + (taxa fixa / quantidade)
+        ----------------------------------------------
         1 − imposto% − marketplace% − (1 / ROAS)
 ```
 
@@ -49,32 +51,30 @@ Com trava: se `imposto + marketplace + 1/ROAS >= 95%`, o preço é bloqueado e u
 
 Dados de referência embutidos no arquivo, que valem migrar: tarifa média de energia dos 27 estados e consumo em watts de 30 modelos de impressora por marca (a **Bambu Lab A1**, a máquina da casa, está lá com 150 W).
 
-### Defeitos conhecidos, confirmados por teste, ainda NÃO corrigidos
+### Decisões de precificação tomadas pelo dono (já implementadas)
 
-Os dois aparecem apenas no **modo lote** e ambos mexem em dinheiro. Estão pendentes de decisão do dono; não corrija por conta própria.
+Dois defeitos do modo lote foram encontrados, confirmados por teste e corrigidos. As quatro decisões abaixo são **dele**, não suposições — respeite-as:
 
-1. **Mão de obra é subestimada no lote.** O campo diz "Seu tempo **na peça**" e a dica fala de remoção de suporte e lixa — trabalho por peça. Mas o código não multiplica pela quantidade, e depois divide o total pela quantidade. Num lote de 20 peças com 10 min de acabamento cada, ela cobra R$ 0,42 por peça em vez de R$ 8,33: **20× menos**. O campo `Extras`, ao lado, *é* multiplicado pela quantidade — ou seja, dois campos vizinhos com a mesma leitura têm tratamento oposto.
-2. **Taxa fixa é cobrada por peça no lote.** O campo é "Taxa fixa por **venda**", mas entra no preço de cada peça. Num lote de 20 com taxa de R$ 6,00, cobra R$ 120,00 onde deveria cobrar R$ 6,00.
-
-Os dois erram em direções opostas, o que é justamente o que os torna difíceis de notar: o preço do lote pode parecer plausível com os dois errados.
-
-### Lacuna em relação ao negócio
-
-A calculadora tem uma única linha de trabalho humano ("seu tempo na peça", em minutos), pensada em acabamento. Mas a empresa também **vende modelagem sob encomenda**, que é trabalho de CAD medido em horas e cobrado a outra taxa. Hoje não há linha separada para isso. Falta definir com o dono.
+1. **Trabalho humano tem três escopos distintos**, e confundi-los foi a origem do defeito antigo:
+   - `Acabamento` — por peça (tirar suporte, lixar, montar). **Multiplica pela quantidade.**
+   - `Preparo` — uma vez no trabalho (fatiar, montar a mesa, trocar filamento). **Não multiplica.**
+   - `Modelagem` — uma vez no pedido, com **valor de hora próprio**, separado da mão de obra. Cobre a venda de modelagem sob encomenda.
+2. **Taxa fixa é por venda**, então é rateada entre as peças do lote, não cobrada em cada uma. O dono não usa o campo hoje; foi corrigido mesmo assim, porque o erro era de 20× num lote de 20 e ficaria esperando o dia em que ele vendesse por marketplace.
+3. **A margem de falha cobre o trabalho humano** (acabamento e preparo), além de material, energia e máquina.
+4. **A margem de falha NÃO cobre modelagem nem embalagem.** Modelagem fica de fora porque o arquivo CAD sobrevive a uma impressão perdida — não se remodela. Embalagem fica de fora porque a peça perdida nunca chegou a ser embalada. Essa distinção foi decisão de projeto; não a desfaça por engano ao mexer no cálculo.
 
 ### Identidade visual já estabelecida
 
 A calculadora já define a marca, e o sistema deve seguir: azul-marinho `#132840`, turquesa `#1CB8C4`, fundo claro `#EEF2F6`, fontes **Sora** (títulos e números) e **Figtree** (texto). Tem tema claro e escuro funcionando e layout que já responde bem no celular.
 
-### Caminho de migração recomendado
+### Onde a migração está
 
-O motor de preço é lógica pura em cerca de 50 linhas e só toca o DOM através de uma função `num()`. Ele sai limpo:
+O plano era extrair o motor de preço, provar com teste que nada quebrou, e só então construir o sistema em volta. **Os dois primeiros passos estão feitos:**
 
-1. Extrair para uma função pura em TypeScript, com os custos e o preço entrando e saindo como dados.
-2. Cobrir com teste comparando contra os números da calculadora atual, provando que nada mudou.
-3. Só então construir os cadastros em volta.
+- `precificacao.js` — o motor, lógica pura, sem nenhuma referência a tela. Roda no navegador como `<script>` e no Node via `require`.
+- `teste-precificacao.js` — 52 testes, sem biblioteca nenhuma. Guarda a identidade central (lucro ÷ custo = ROI pedido) em 30 combinações de taxas, as duas correções, os escopos de trabalho, a regra da margem de falha, as travas de divisão por zero, e uma cópia da **fórmula original** para que qualquer divergência futura apareça como diferença explicada.
 
-Nessa ordem. Reescrever a fórmula junto com a construção do sistema é a forma mais fácil de quebrar o preço sem ninguém perceber.
+Falta o passo 3: os cadastros. Ao construí-los, **use o motor, não reescreva o cálculo.**
 
 ## O que vamos construir
 
@@ -141,11 +141,9 @@ Nada está instalado. A calculadora já foi vista: é HTML puro, sem build. Isso
 
 ## O que ainda não se sabe — não invente
 
-- **Semântica do modo lote**: os dois defeitos acima dependem de saber se "tempo na peça" e "taxa fixa" são por peça ou por lote. Pergunte antes de corrigir; um palpite aqui erra preço de venda real.
-- **Modelagem sob encomenda**: precisa de linha própria com valor de hora separado? Não definido.
-- **Margem de falha**: hoje incide só sobre filamento, energia e máquina, deixando mão de obra e embalagem de fora. Pode ser intencional. Confirmar.
 - **Fornecedores**: não se sabe se basta cadastro de contato ou se ele quer preço por fornecedor e histórico de compra.
 - **Volume esperado de pedidos**: não perguntado. Muda o quanto de automação se justifica.
+- **ABS/ASA na A1 aberta**: a máquina não tem câmara fechada e essas peças empenam. Se a empresa as vende, o risco de refugo deveria estar no preço. Levantado com o dono, ainda sem resposta.
 
 ## Segurança que este projeto exige de verdade
 
@@ -153,11 +151,21 @@ O cliente acessa o sistema. "Cliente vê apenas os próprios pedidos" não é de
 
 ## Estado atual do repositório
 
-Três arquivos: `README.md` (só o título), este arquivo e **`calculadora-3d.html`**, que funciona hoje — abre direto no navegador, sem instalar nada.
+```
+calculadora-3d.html     a calculadora, funcionando; abre direto no navegador
+precificacao.js         o motor de preço, lógica pura, sem tela
+teste-precificacao.js   52 testes do motor, sem dependências
+CLAUDE.md               este arquivo
+README.md               só o título
+```
 
-Ainda **não existe** sistema: nenhum framework, nenhuma dependência, nenhum banco, nenhuma autenticação, nenhum teste, nenhum deploy. Cadastro de clientes, fornecedores, usuários, estoque e fila de impressoras: nada disso foi construído.
+**Rodar a calculadora:** abrir `calculadora-3d.html` no navegador. Não precisa instalar nada, nem servidor. `precificacao.js` tem que estar na mesma pasta.
 
-Quando o sistema começar, substitua esta seção pelos comandos reais de rodar, testar e publicar — cada um verificado rodando de fato — e pela arquitetura que existir.
+**Rodar os testes:** `node teste-precificacao.js` — sai `52 passaram, 0 falharam` e código de saída 0. Verificado. Rode isto depois de qualquer mudança no preço, antes de commitar.
+
+**Verificado também em navegador de verdade** (Chromium, tela de celular de 390 px): a página carrega sem erro de JavaScript, a tela e o motor produzem o mesmo número, e o recibo em PDF continua sendo gerado.
+
+Ainda **não existe** sistema: nenhum framework, nenhum banco, nenhuma autenticação, nenhum deploy. Cadastro de clientes, fornecedores, usuários, estoque e fila de impressoras: nada disso foi construído.
 
 ## Git
 
