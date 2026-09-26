@@ -146,7 +146,7 @@ Cuidado ao unificar: a potência é em **watts** na calculadora e em **kW** no G
 
 **2. A hospedagem é a Cloudflare, usando tudo o que ela oferece.** Pedido do dono, textual: banco de dados, R2 para PDFs **e arquivos 3D do cliente (STL/3MF)**, geração de pedido em PDF e hospedagem do site — tudo lá.
 
-Isso traz uma lacuna concreta: `app/api/files/route.ts` hoje só aceita **imagem** (JPEG, PNG, WebP) de até **5 MB**. Arquivo 3D não passa: tipo diferente e tamanho maior. Ampliar essa rota é trabalho do passo de hospedagem. Para o PDF, a técnica da `calculadora-3d.html` (desenhar em canvas e montar os bytes do PDF à mão, sem biblioteca) já está no repositório e pode ser reaproveitada; o `manager.tsx` também já tem um modelo de impressão. O app já foi feito para Workers + D1 + R2, então fica onde está. A recomendação anterior de Next.js + Supabase + Vercel, feita antes de o Gestão 3D aparecer, **está descartada**: migrar de stack jogaria fora um sistema que já funciona. O domínio `fabricando3d.com.br` aponta para a Cloudflare.
+*(A rota de arquivos já aceita STL e 3MF — veja "Arquivos" adiante.)* Para o PDF, a técnica da `calculadora-3d.html` (desenhar em canvas e montar os bytes do PDF à mão, sem biblioteca) já está no repositório e pode ser reaproveitada; o `manager.tsx` também já tem um modelo de impressão. O app já foi feito para Workers + D1 + R2, então fica onde está. A recomendação anterior de Next.js + Supabase + Vercel, feita antes de o Gestão 3D aparecer, **está descartada**: migrar de stack jogaria fora um sistema que já funciona. O domínio `fabricando3d.com.br` aponta para a Cloudflare.
 
 **3. Não há mais acesso à hospedagem original, e os dados antigos se perderam.** Consequências: o sistema **nasce vazio**, e **não é preciso escrever rotina de importação** — o que era trabalho previsto e deixou de ser. A empresa estava começando, então a perda é pequena.
 
@@ -216,6 +216,30 @@ A recomendação anterior deste arquivo (Next.js + Supabase + Vercel) foi escrit
 - **Volume esperado de pedidos**: não perguntado. Muda o quanto de automação se justifica.
 - **ABS/ASA na A1 aberta**: a máquina não tem câmara fechada e essas peças empenam. Se a empresa as vende, o risco de refugo deveria estar no preço. Levantado com o dono, ainda sem resposta.
 
+## Arquivos: STL, 3MF e fotos (feito)
+
+O dono perguntou se dava para guardar os arquivos 3D no Google Drive, achando que sairia mais barato. **Sai mais caro e mais frágil**, e a decisão foi ficar no R2:
+
+- **R2 grátis**: 10 GB dedicados, 1 M escritas, 10 M leituras por mês e **saída de dados gratuita**. Um STL tem de 1 a 20 MB, então cabem centenas de arquivos. Acima disso, US$ 0,015 por GB-mês.
+- **Drive grátis**: 15 GB **compartilhados com Gmail e Fotos**, ou seja, menos na prática.
+- A maioria dos serviços cobra pelo **download**; o R2 não. Num sistema de impressão 3D, é aí que o gasto apareceria.
+- E o Drive exigiria OAuth: com a tela de consentimento em "Testing", o *refresh token* **expira a cada 7 dias**, quebrando o upload semanalmente até alguém reautorizar. Sair disso exige publicar o app e passar pela verificação do Google.
+
+Se um dia ele quiser os arquivos visíveis no próprio Drive, o caminho é **cópia só de ida** a partir do R2, nunca trocar o R2 pelo Drive.
+
+**`lib/arquivos.ts`** decide o que entra, e **`lib/arquivos.teste.ts`** tem 35 testes. A armadilha que ele resolve: **o navegador não informa tipo confiável para STL e 3MF** — o campo vem vazio, vem `application/octet-stream` ou vem inventado. Então a conferência é por **extensão mais assinatura do conteúdo**, nunca pelo que o navegador afirma:
+
+- **STL binário** não tem assinatura. Reconhece-se pela aritmética do próprio formato: 80 bytes de cabeçalho + 4 da contagem de triângulos + 50 por triângulo. Se a conta fecha com o tamanho do arquivo, é STL de verdade.
+- **STL em texto** começa com `solid`.
+- **3MF** é um pacote ZIP, então tem a assinatura `PK\x03\x04`.
+- Imagens pelas assinaturas usuais.
+
+Isso barra o ataque de renomear: um `.exe` chamado `peca.stl` passa pela extensão e **morre na assinatura** — há teste provando.
+
+Limites: **50 MB** para modelo, **5 MB** para imagem. O arquivo **não é carregado inteiro na memória**: só os primeiros 4 KB entram, para a conferência, e o resto vai em fluxo para o R2. Verificado com um STL real de 40 MB, que subiu em 1,5 s e voltou byte a byte idêntico, sem erro de memória.
+
+No download, modelo vai como **anexo com o nome original** (o navegador não sabe exibir STL) e imagem vai embutida. `nomeSeguro()` tira acento e bloqueia caminho, aspas e quebra de linha antes de o nome entrar no cabeçalho.
+
 ## Autenticação (feita)
 
 Sessão própria, guardada no D1. Nada de serviço externo: menos uma peça para o dono manter.
@@ -259,6 +283,8 @@ gestao-3d/              o sistema de gestão
   lib/auth.teste.ts          36 testes de autenticação
   lib/sessao.ts              sessão no banco e guardas das rotas
   lib/limite.ts              trava de força bruta
+  lib/arquivos.ts            o que entra: STL, 3MF e imagens, por assinatura
+  lib/arquivos.teste.ts      35 testes de validação de arquivo
   app/acesso.tsx             tela de entrada e de primeiro acesso
   scripts/teste-acesso.sh    prova que a API está fechada
 CLAUDE.md               este arquivo
@@ -293,7 +319,13 @@ Sai `33 passaram, 0 falharam`. E os da autenticação:
 node --experimental-strip-types lib/auth.teste.ts
 ```
 
-Sai `36 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
+Sai `36 passaram, 0 falharam`. E os de arquivo:
+
+```
+node --experimental-strip-types lib/arquivos.teste.ts
+```
+
+Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 
