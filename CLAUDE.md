@@ -339,6 +339,23 @@ Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.s
 
 **O que ainda não existe:** um sistema único. Hoje são duas peças separadas, com fórmulas de preço que discordam, e a de gestão sem autenticação nenhuma. Nada está publicado, e nada deve ser publicado antes do login existir.
 
+## Publicação (preparada, ainda não feita)
+
+`gestao-3d/PUBLICAR.md` é o passo a passo para o dono, com os dois caminhos: pelo painel da Cloudflare, sem terminal, ou pelo terminal com `scripts/publicar.sh`.
+
+O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para a conta da OpenAI, com nome de banco e bucket fixos e um `database_id` de exemplo. Agora ele lê `CF_WORKER_NAME`, `CF_D1_NOME`, `CF_D1_ID` e `CF_R2_BUCKET` do ambiente, caindo nos valores antigos quando não há `.env` — assim o desenvolvimento local segue funcionando sem configuração.
+
+**Verificado:** o build gera a configuração certa com e sem `.env`, e `wrangler deploy --dry-run` valida o Worker com os bindings `DB` e `BUCKET` apontando para os nomes da Fabricando 3D. O pacote dá 318 KB comprimido.
+
+**Não verificado, e não dá para verificar daqui:** a publicação de verdade. Não há conta Cloudflare neste contêiner. O script tem `--simular`, que roda tudo menos o envio.
+
+Duas armadilhas encontradas ao preparar, que valem lembrar:
+
+- **`wrangler whoami` sai com código 0 mesmo sem login** — ele só avisa no texto. Checar o código de saída não detecta nada; o script olha a saída.
+- **`.gitignore` não aceita comentário no fim da linha.** `!.env.exemplo  # nota` vira um padrão literal e a exceção não funciona. O comentário tem que ficar em linha própria.
+
+**Exigência da Cloudflare que trava o setup:** o R2 só é habilitado com cartão cadastrado, mesmo no plano grátis. Dá para publicar sem R2 (login e orçamento funcionam; envio de arquivo e foto não) se o dono preferir adiar isso.
+
 ## Git
 
 - Branch padrão: `main`.

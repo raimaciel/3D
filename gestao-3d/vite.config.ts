@@ -9,30 +9,27 @@ const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
 
 const { d1, r2 } = hostingConfig;
 
+// Para onde isto publica. Em desenvolvimento os valores abaixo bastam: o banco
+// local do wrangler ignora o id. Para publicar na conta da Fabricando 3D,
+// preencha o .env (veja .env.exemplo e PUBLICAR.md) — sem isso o deploy iria
+// para o lugar errado, ou para lugar nenhum.
+const nomeWorker = process.env.CF_WORKER_NAME || "fabricando3d";
+const nomeBanco = process.env.CF_D1_NOME || "site-creator-d1";
+const idBanco = process.env.CF_D1_ID || SITE_CREATOR_PLACEHOLDER_DATABASE_ID;
+const nomeBucket = process.env.CF_R2_BUCKET || "site-creator-r2";
+
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const managedLinux = readExecutionProfile() === "managed-linux";
 
 const localBindingConfig = {
+  name: nomeWorker,
   main: "vinext/server/fetch-handler",
   compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
-    ? [
-        {
-          binding: d1,
-          database_name: "site-creator-d1",
-          database_id: SITE_CREATOR_PLACEHOLDER_DATABASE_ID,
-        },
-      ]
+    ? [{ binding: d1, database_name: nomeBanco, database_id: idBanco }]
     : [],
-  r2_buckets: r2
-    ? [
-        {
-          binding: r2,
-          bucket_name: "site-creator-r2",
-        },
-      ]
-    : [],
+  r2_buckets: r2 ? [{ binding: r2, bucket_name: nomeBucket }] : [],
 };
 
 export default defineConfig(async () => {
