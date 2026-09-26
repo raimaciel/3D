@@ -1,0 +1,60 @@
+# Publica o Gestão 3D na Cloudflare a cada mudança na branch principal.
+#
+# Para isto funcionar, dois segredos precisam existir no GitHub, em
+# Settings → Secrets and variables → Actions:
+#   CLOUDFLARE_API_TOKEN   token criado no painel da Cloudflare
+#   CLOUDFLARE_ACCOUNT_ID  o id da conta, que aparece no painel
+# O passo a passo está em gestao-3d/PUBLICAR.md.
+
+name: Publicar na Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:      # permite publicar na mão, pelo botão do GitHub
+
+concurrency:
+  group: publicar-producao
+  cancel-in-progress: false   # nunca interrompe uma publicação no meio
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gestao-3d
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: gestao-3d/.node-version
+          cache: pnpm
+          cache-dependency-path: gestao-3d/pnpm-lock.yaml
+
+      - name: Instalar
+        run: pnpm install --frozen-lockfile
+
+      # Os testes rodam ANTES de publicar. Se algum falhar, nada vai ao ar:
+      # é a rede de segurança que impede uma conta de preço errada chegar
+      # ao cliente.
+      - name: Testar o motor de preço
+        run: node --experimental-strip-types lib/precificacao.teste.ts
+
+      - name: Testar a autenticação
+        run: node --experimental-strip-types lib/auth.teste.ts
+
+      - name: Testar a validação de arquivos
+        run: node --experimental-strip-types lib/arquivos.teste.ts
+
+      - name: Compilar
+        run: pnpm build
+
+      - name: Publicar
+        run: npx wrangler deploy --config dist/server/wrangler.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
