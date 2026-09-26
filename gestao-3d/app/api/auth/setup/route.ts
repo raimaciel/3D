@@ -39,10 +39,18 @@ export async function POST(request: Request) {
     return Response.json({ usuario: { id, email, name: nome, role: 'admin' } },
       { headers: { 'Set-Cookie': cookieDeEntrada(request, token), 'Cache-Control': 'no-store' } });
   } catch (e) {
-    // Registrado de proposito: sem isto a causa fica invisivel e so resta
-    // adivinhar. Aparece em Observability -> Logs, no painel da Cloudflare.
-    console.error('FALHA EM /api/auth/setup:', e instanceof Error ? e.message : String(e),
-                  e instanceof Error ? e.stack : '');
-    return Response.json({ error: 'Não foi possível criar o acesso.' }, { status: 503 });
+    const detalhe = e instanceof Error ? e.message : String(e);
+    console.error('FALHA EM /api/auth/setup:', detalhe, e instanceof Error ? e.stack : '');
+    /*
+     * A causa real vai PARA A TELA, e só nesta rota.
+     *
+     * Normalmente mostrar mensagem de erro interna é má ideia, porque ajuda
+     * quem ataca. Aqui não: esta rota só responde enquanto NÃO existe nenhum
+     * usuário nem nenhum dado no sistema, então não há o que proteger — e o
+     * dono não tem como caçar log no painel. No instante em que o primeiro
+     * acesso é criado, a rota fecha para sempre e este texto some junto.
+     */
+    return Response.json({ error: 'Não foi possível criar o acesso. Causa: ' + detalhe },
+                         { status: 503 });
   }
 }
