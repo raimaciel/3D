@@ -76,6 +76,46 @@ O plano era extrair o motor de preço, provar com teste que nada quebrou, e só 
 
 Falta o passo 3: os cadastros. Ao construí-los, **use o motor, não reescreva o cálculo.**
 
+## O OUTRO ponto de partida: o Gestão 3D (JÁ NO REPOSITÓRIO, em `gestao-3d/`)
+
+O dono **já tinha um sistema de gestão quase completo**, feito no construtor de apps do ChatGPT, importado aqui sem alteração. Ele cobre quase todos os módulos da lista: clientes, fornecedores, materiais com estoque e compras, impressoras, produtos, orçamentos, pedidos, produção em etapas e financeiro. Tem manual de uso em `gestao-3d/docs/`.
+
+**Não construa esses cadastros do zero.** O trabalho aqui é migrar e corrigir, não recomeçar.
+
+**O que é tecnicamente:** Next.js 16 + React 19 sobre **Cloudflare Workers**, via `vinext` (beta), com banco **D1** (binding `DB`) e arquivos em **R2** (binding `BUCKET`). Drizzle ORM, shadcn/ui, Tailwind 4. Rodava em `gestao3d-maciel.raimaciel.chatgpt.site`.
+
+**Verificado neste contêiner:** `pnpm install` e `pnpm build` passam com Node 22, e `pnpm start` sobe o servidor local. O pacote é válido e compila.
+
+### Três problemas graves, verificados na prática
+
+**1. Não existe autenticação nenhuma.** `app/chatgpt-auth.ts` existe mas **nenhum arquivo o importa** — é código morto. Provado com o servidor rodando localmente:
+
+- `GET /api/workspace` sem cabeçalho nenhum devolveu **HTTP 200 com o banco inteiro**.
+- `POST` de um cliente novo via `curl`, sem login, **gravou e persistiu** (revisão foi de 0 para 1).
+
+A única defesa é `if(origin && origin !== ...)` nas rotas, e ela **não protege nada**: `curl` não manda cabeçalho `Origin`, então a condição é falsa e a requisição passa. No Sites da OpenAI havia login da plataforma na frente; fora dela, **publicar isto é expor e deixar editável todo o cadastro de clientes, pedidos e financeiro da empresa**. Resolver isto é pré-requisito de qualquer publicação, não melhoria futura.
+
+**2. O banco inteiro é uma linha só.** Tabela `workspace`, campo `data` com o estado completo em JSON. Não há tabela de cliente, pedido ou estoque — nada é consultável por SQL, e cada gravação reescreve tudo. Há trava otimista por `revision`: se duas pessoas salvarem ao mesmo tempo, a segunda leva erro 409 e perde o que digitou. Com equipe **e** clientes acessando, como está planejado, isso vai doer. Um modelo relacional de verdade é o que destrava o RLS ("cliente vê só o pedido dele"), que neste formato é impossível.
+
+**3. Duas fórmulas de preço incompatíveis convivem no projeto.** Esta é a decisão mais urgente de produto.
+
+| | `precificacao.js` (a calculadora) | `gestao-3d/lib/domain.ts` |
+|---|---|---|
+| Preço de venda | **calculado** a partir do ROI, sobrevivendo a imposto, marketplace e ROAS | **digitado à mão**; o sistema só mostra a margem depois |
+| Margem de falha | material + energia + máquina + preparo + acabamento | **só o material** |
+| Hora de máquina | `valor da impressora ÷ vida útil` | taxa por hora digitada |
+| Manutenção | não existe | % sobre material + energia |
+| Pintura | não existe | por peso, com taxa própria |
+| Embalagem | por peça | **uma vez no pedido** |
+| Energia | potência em **watts** | potência em **kW** (padrão 0.5) |
+| Modelagem | uma vez no pedido | `customScope`: por pedido **ou** por peça |
+
+A diferença de unidade de energia é uma armadilha real: digitar `150` num campo pensando no outro sistema erra a conta em 1000×. E as duas filosofias são opostas — uma calcula o preço, a outra só confere a margem. **Não escolha por conta própria qual vale; é decisão do dono.** O `customScope` do Gestão 3D é mais completo que a calculadora nesse ponto e vale aproveitar.
+
+### Dados: risco imediato
+
+Os dados reais **não estão no pacote** — ficaram no D1 da hospedagem de origem. O sistema tem exportação (Configurações → Backup → Exportar dados) mas **não tem importação**. Fotos e logo estão no R2, à parte. Exportar antes de perder acesso à hospedagem original é urgente; escrever a rotina de importação é trabalho a fazer.
+
 ## O que vamos construir
 
 Um **sistema de gestão** junto com o site público, em **um único projeto com área de login**:
@@ -84,7 +124,7 @@ Um **sistema de gestão** junto com o site público, em **um único projeto com 
 - **Área interna (equipe)** — a gestão do dia a dia.
 - **Área do cliente** — o cliente acompanha o próprio pedido.
 
-Módulos confirmados pelo dono:
+Módulos confirmados pelo dono (quase todos **já existem** no `gestao-3d/` — migrar, não refazer):
 
 1. **Orçamentos e pedidos** — evolução da calculadora existente.
 2. **Clientes e histórico** — cadastro com contato e tudo que cada cliente já encomendou.
@@ -152,20 +192,31 @@ O cliente acessa o sistema. "Cliente vê apenas os próprios pedidos" não é de
 ## Estado atual do repositório
 
 ```
-calculadora-3d.html     a calculadora, funcionando; abre direto no navegador
-precificacao.js         o motor de preço, lógica pura, sem tela
+calculadora-3d.html     a calculadora de orçamento, funcionando
+precificacao.js         o motor de preço da calculadora, lógica pura
 teste-precificacao.js   52 testes do motor, sem dependências
+gestao-3d/              o sistema de gestão existente, como veio, sem alteração
 CLAUDE.md               este arquivo
 README.md               só o título
 ```
 
-**Rodar a calculadora:** abrir `calculadora-3d.html` no navegador. Não precisa instalar nada, nem servidor. `precificacao.js` tem que estar na mesma pasta.
+**Rodar a calculadora:** abrir `calculadora-3d.html` no navegador. Não precisa instalar nada. `precificacao.js` tem que estar na mesma pasta.
 
-**Rodar os testes:** `node teste-precificacao.js` — sai `52 passaram, 0 falharam` e código de saída 0. Verificado. Rode isto depois de qualquer mudança no preço, antes de commitar.
+**Rodar os testes da calculadora:** `node teste-precificacao.js` → `52 passaram, 0 falharam`. Verificado.
 
-**Verificado também em navegador de verdade** (Chromium, tela de celular de 390 px): a página carrega sem erro de JavaScript, a tela e o motor produzem o mesmo número, e o recibo em PDF continua sendo gerado.
+**Rodar o Gestão 3D** (dentro de `gestao-3d/`, com Node 22 e pnpm 11) — todos verificados neste contêiner:
 
-Ainda **não existe** sistema: nenhum framework, nenhum banco, nenhuma autenticação, nenhum deploy. Cadastro de clientes, fornecedores, usuários, estoque e fila de impressoras: nada disso foi construído.
+```
+pnpm install --frozen-lockfile
+pnpm build
+npx wrangler d1 execute site-creator-d1 --config dist/server/wrangler.json \
+  --local --persist-to .wrangler/state --file drizzle/0000_small_solo.sql
+pnpm start      # sobe em http://127.0.0.1:8787
+```
+
+A migração só é necessária na primeira vez; sem ela a API responde 503.
+
+**O que ainda não existe:** um sistema único. Hoje são duas peças separadas, com fórmulas de preço que discordam, e a de gestão sem autenticação nenhuma. Nada está publicado, e nada deve ser publicado antes do login existir.
 
 ## Git
 
