@@ -238,6 +238,14 @@ Isso barra o ataque de renomear: um `.exe` chamado `peca.stl` passa pela extens�
 
 Limites: **50 MB** para modelo, **5 MB** para imagem. O arquivo **não é carregado inteiro na memória**: só os primeiros 4 KB entram, para a conferência, e o resto vai em fluxo para o R2. Verificado com um STL real de 40 MB, que subiu em 1,5 s e voltou byte a byte idêntico, sem erro de memória.
 
+### Onde o anexo aparece na tela
+
+O arquivo pertence ao **item do orçamento**, não ao pedido: o STL é de uma peça específica, e assim ele viaja junto dela da precificação até a produção. `Item.arquivos` é uma lista de `{url, nome}`, validada por `arquivoSchema` em `lib/domain.ts` (a url tem que casar com `/api/files/<uuid>`).
+
+O fluxo verificado de ponta a ponta no navegador: anexar na tela de precificação → o item vai para o carrinho com o contador de anexos → salvar o orçamento → aprovar → o arquivo aparece no pedido, na produção, e baixa **byte a byte idêntico** ao que o cliente mandou.
+
+Ainda **não há** como anexar a um pedido já existente (caso do cliente que manda o arquivo depois da aprovação). Isso pede uma ação nova no domínio, no molde da ação `photo`, que já faz exatamente isso para fotos de produção.
+
 No download, modelo vai como **anexo com o nome original** (o navegador não sabe exibir STL) e imagem vai embutida. `nomeSeguro()` tira acento e bloqueia caminho, aspas e quebra de linha antes de o nome entrar no cabeçalho.
 
 ## Autenticação (feita)

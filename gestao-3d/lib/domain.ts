@@ -23,6 +23,13 @@ export const calculationSchema=z.object({
   tax:num.max(100),marketplace:num.max(100),fixedFee:num,roas:num,roi:num
 });
 export type Calculation=z.infer<typeof calculationSchema>;
+
+/** Arquivo que o cliente mandou (STL, 3MF, foto de referência), preso ao item. */
+export const arquivoSchema=z.object({
+  url:z.string().regex(/^\/api\/files\/[a-f0-9-]{36}$/,'Endereço de arquivo inválido.'),
+  nome:z.string().trim().min(1).max(200)
+});
+export type Arquivo=z.infer<typeof arquivoSchema>;
 export const defaults:Calculation={
   quantity:1,weight:115,hours:6.3,kgPrice:100,
   machineRate:0,power:150,energyRate:1.1,maintenance:1,
@@ -64,7 +71,7 @@ const supplierLink=z.string().trim().max(2000).default('').refine(v=>v===''||!!s
 export const entitySchemas={customers:z.object({name,phone:txt,email:z.string().max(200).default(''),notes:txt}),suppliers:z.object({name,phone:txt,notes:txt,supplierType:z.enum(['','online','fisico']).default(''),platform:z.string().trim().max(100).default(''),link:supplierLink,address:txt}),materials:z.object({name,brand:z.string().trim().max(200).default(''),model:z.string().trim().max(200).default(''),type:name,color:name,kgPrice:num,minimum:num,spoolCount:z.number().int().finite().min(0).max(100000).default(0),spoolWeight:num.default(0),spoolPrice:num.default(0),supplierId:z.string().default(''),paymentType:z.enum(['avista','parcelado']).default('avista'),installments:z.number().int().finite().min(1).max(120).default(1),notes:txt}),printers:z.object({name,model:z.string().trim().max(200).default(''),brand:z.string().trim().max(200).default(''),machineRate:num,power:num,notes:txt}),products:z.object({name,category:name,model:z.string().trim().max(200).default(''),color:z.string().trim().max(100).default(''),description:txt,weight:num,hours:num,photo:txt})};
 export type Kind=keyof typeof entitySchemas;
 export type Entity={id:string;[key:string]:any};
-export type Item={id:string;name:string;category:string;materialId:string;printerId:string;calculation:Calculation;cost:number;revenue:number;grams:number};
+export type Item={id:string;name:string;category:string;materialId:string;printerId:string;calculation:Calculation;arquivos:Arquivo[];cost:number;revenue:number;grams:number};
 export type Quote={id:string;number:number;customerId:string;customerName:string;date:string;due:string;notes:string;items:Item[];cost:number;revenue:number;status:string};
 export type Order=Quote & {quoteId:string;stage:string;printed:boolean;painted:boolean;packed:boolean;delivered:boolean;photos:string[]};
 export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number};};
@@ -89,7 +96,7 @@ export function applyAction(s:State,action:any):State{
   s.settings={...s.settings,...p};
  }
  else if(action.type==='quote'){
-  const p=z.object({customerId:z.string(),date,due:date,notes:txt,items:z.array(z.object({name,category:name,materialId:z.string(),printerId:z.string(),calculation:calculationSchema})).min(1).max(100)}).parse(action.data);
+  const p=z.object({customerId:z.string(),date,due:date,notes:txt,items:z.array(z.object({name,category:name,materialId:z.string(),printerId:z.string(),calculation:calculationSchema,arquivos:z.array(arquivoSchema).max(10).default([])})).min(1).max(100)}).parse(action.data);
   const customer=ref(s.customers,p.customerId,'Cliente');
   const items=p.items.map(v=>{ref(s.materials,v.materialId,'Material');ref(s.printers,v.printerId,'Impressora');const c=calculate(v.calculation);return {...v,id:uid(),cost:c.cost,revenue:c.revenue,grams:c.grams}});
   s.quotes.push({...p,id:uid(),number:s.quotes.length+1,customerName:customer.name,items,cost:money(items.reduce((a,b)=>a+b.cost,0)),revenue:money(items.reduce((a,b)=>a+b.revenue,0)),status:'Aberto'});

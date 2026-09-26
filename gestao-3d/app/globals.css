@@ -136,3 +136,20 @@ body {
 .acesso-aviso{display:flex;gap:10px;background:#fff8ec;border:1px solid #f0d9ae;color:#8a6420;border-radius:8px;padding:13px 15px;font-size:13px;line-height:1.6;margin-top:17px}
 .acesso-aviso svg{flex-shrink:0;margin-top:2px}
 .acesso-carregando{text-align:center;color:#6d8395;font-size:14px;padding:22px 0}
+
+/* Arquivos que o cliente mandou, presos ao item do orçamento. */
+.anexos{border-top:1px solid #edf2f6;margin-top:20px;padding-top:17px}
+.anexos-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.anexos-topo>span{font-size:14px;color:#395468;font-weight:500}
+.file-chip{margin-left:auto;background:#f0f6f9;border:1px solid #d5e0e9;color:#2c6a7c;padding:8px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.file-chip:hover{border-color:#0a98a8;background:#e6f4f7}
+.anexos-lista{list-style:none;margin:13px 0 0;padding:0;display:grid;gap:8px}
+.anexos-lista li{display:flex;align-items:center;gap:9px;background:#f7fafc;border:1px solid #e2eaf1;border-radius:8px;padding:10px 12px;font-size:13px}
+.anexos-lista svg{color:#6a8497;flex-shrink:0}
+.anexos-lista a{color:#0a7183;text-decoration:none;font-weight:500;overflow-wrap:anywhere;min-width:0}
+.anexos-lista a:hover{text-decoration:underline}
+.anexos-lista button{margin-left:auto;color:#a8737a;flex-shrink:0}
+.anexos-lista button:hover{color:#c04d45}
+.anexos-linha{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:4px}
+.anexos-linha a{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#0a7183;text-decoration:none;overflow-wrap:anywhere}
+.anexos-linha a:hover{text-decoration:underline}
