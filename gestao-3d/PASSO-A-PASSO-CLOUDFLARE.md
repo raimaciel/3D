@@ -44,28 +44,48 @@ repositório **`3D`**. Não precisa dar acesso a todos.
 
 ## C — Configurar a construção
 
-Esta é a parte que importa. Preencha **exatamente** assim:
+A tela de criação pede só três campos. Preencha assim:
 
-| Campo | O que colocar |
+| Campo | Valor |
 |---|---|
-| Project name / Nome | `fabricando3d` |
-| Production branch | `main` |
+| Project name | `3d` (ou o nome que preferir) |
+| Build command | `pnpm build` |
+| Deploy command | `npx wrangler deploy --config dist/server/wrangler.json` |
+| Preview command | **deixe vazio** |
+
+> **Atenção:** o comando com `--config` vai no **Deploy command**, não no
+> **Preview command**. O Preview roda em ramificações de teste; se ele publicar,
+> você acaba com publicações inesperadas.
+
+**O campo Root directory NÃO existe nesta tela.** Ele só aparece depois, nas
+configurações — e é obrigatório para este projeto. Veja o passo C2.
+
+Clique em **Deploy**. **A primeira construção vai falhar**, com a mensagem
+`ERR_PNPM_NO_IMPORTER_MANIFEST_FOUND ... No package.json was found`. É esperado:
+falta o Root directory. Siga para o C2.
+
+### C2 — Ajustar o Root directory (obrigatório)
+
+Seu repositório tem a calculadora na raiz e o sistema dentro da pasta
+`gestao-3d`. Sem apontar essa pasta, a construção procura no lugar errado.
+
+1. No Worker recém-criado, abra a aba **Settings**.
+2. Procure a seção de **Build** (pode ser "Builds", "Build configuration" ou
+   "Build settings") e clique em **Edit** / **Configure**.
+3. Preencha:
+
+| Campo | Valor |
+|---|---|
 | **Root directory** | `gestao-3d` |
 | Build command | `pnpm build` |
 | Deploy command | `npx wrangler deploy --config dist/server/wrangler.json` |
+| Preview command | vazio |
 
-**Atenção ao Root directory.** O repositório tem a calculadora na raiz e o sistema
-dentro da pasta `gestao-3d`. Se esse campo ficar vazio, a construção procura o
-projeto no lugar errado e falha dizendo que não achou o `package.json`.
+4. **Save**.
+5. Vá na aba **Deployments** e clique em **Retry build**.
 
-Se houver um campo de **Install command**, coloque:
-`pnpm install --frozen-lockfile`
-Se não houver, tudo bem — a Cloudflare instala sozinha.
-
-**Não preencha variável de ambiente nenhuma.** O banco, o bucket e o nome já estão
-gravados no projeto.
-
----
+Agora a construção deve passar por Initializing, Cloning, Installing, Building e
+Deploying, todos em verde.
 
 ## D — Publicar
 

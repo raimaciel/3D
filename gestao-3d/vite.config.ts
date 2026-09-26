@@ -11,7 +11,12 @@ const { d1, r2 } = hostingConfig;
 // identificador, e ninguém alcança o banco sem estar autenticado na conta.
 // Deixá-lo aqui evita ter que configurar variável de build no painel.
 // O .env sobrepõe qualquer um destes, para quem precisar publicar noutro lugar.
-const nomeWorker = process.env.CF_WORKER_NAME || "fabricando3d";
+// O projeto na Cloudflare foi criado com o nome "3d", e o wrangler publica com
+// o nome que estiver AQUI. Se os dois divergirem, nasce um segundo Worker e a
+// tela de builds passa a mostrar um que não é o que está no ar. Mantenha igual
+// ao nome do projeto no painel. O endereço público será fabricando3d.com.br de
+// qualquer forma, então este nome é só interno.
+const nomeWorker = process.env.CF_WORKER_NAME || "3d";
 const nomeBanco = process.env.CF_D1_NOME || "fabricando3d";
 const idBanco = process.env.CF_D1_ID || "50c8c520-3ebe-447f-8502-10429660a661";
 const nomeBucket = process.env.CF_R2_BUCKET || "fabricando3d-arquivos";
