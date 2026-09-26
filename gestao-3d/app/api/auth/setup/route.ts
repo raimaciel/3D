@@ -38,7 +38,11 @@ export async function POST(request: Request) {
     const token = await criarSessao(id);
     return Response.json({ usuario: { id, email, name: nome, role: 'admin' } },
       { headers: { 'Set-Cookie': cookieDeEntrada(request, token), 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (e) {
+    // Registrado de proposito: sem isto a causa fica invisivel e so resta
+    // adivinhar. Aparece em Observability -> Logs, no painel da Cloudflare.
+    console.error('FALHA EM /api/auth/setup:', e instanceof Error ? e.message : String(e),
+                  e instanceof Error ? e.stack : '');
     return Response.json({ error: 'Não foi possível criar o acesso.' }, { status: 503 });
   }
 }

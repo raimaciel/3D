@@ -270,7 +270,13 @@ Decisões que **não devem ser desfeitas sem pensar**:
 
 **Risco que sobra, e é real:** entre publicar e criar o primeiro acesso, quem abrir o endereço pode criá-lo no seu lugar. Ou se configura `SETUP_TOKEN` antes de publicar, ou se cria o acesso imediatamente depois. A tela avisa isso em destaque.
 
-**Cuidado com o plano do Workers:** o login gasta ~30 ms, quase tudo em PBKDF2. O plano grátis limita CPU por requisição; se o login começar a falhar por isso, baixe `ITERACOES_PADRAO` em `lib/auth.ts` — as senhas já gravadas continuam valendo.
+**O limite de CPU do Workers já mordeu, em produção.** O plano grátis dá **10 ms de CPU por requisição**. Com `ITERACOES_PADRAO = 150_000`, o cadastro do primeiro acesso falhou com 503 no ar, embora funcionasse perfeitamente no ambiente local, que não tem esse limite. Medido aqui: 150.000 → 35 ms, 40.000 → 9 ms, 15.000 → 3,6 ms.
+
+O valor atual é **15.000**, que é baixo para PBKDF2 e é **uma concessão ao plano grátis, não uma escolha de segurança**. Compensam parcialmente: senha de no mínimo 10 caracteres, trava após 8 tentativas por e-mail, e o hash nunca exposto.
+
+**Caminho de volta, já preparado:** com o Workers Paid (US$ 5/mês) o limite vai a 30 s. Basta trocar o número por 300_000 e publicar — nenhuma senha é invalidada, porque o número de iterações fica gravado dentro de cada hash e as antigas são regravadas no próximo login de cada pessoa. Foi para isso que o formato foi desenhado assim.
+
+**Lição de método:** o ambiente local não tem limite de CPU, então ele não reproduz essa classe de falha. Teste local passando não prova que o Workers aguenta.
 
 **Ainda não existe portal do cliente.** O papel `cliente` existe no banco, mas `exigirEquipe` barra qualquer um que não seja `admin` ou `equipe`. Abrir para cliente depende do banco relacional: com o estado todo num JSON só, não há como mostrar a ele apenas o pedido dele.
 

@@ -8,7 +8,8 @@ export async function GET(request: Request) {
     // sabe mostrar "criar primeiro acesso" em vez de "entrar".
     const precisaConfigurar = usuario ? false : !(await existeAlgumUsuario());
     return Response.json({ usuario, precisaConfigurar }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (e) {
+    console.error('FALHA EM /api/auth/me:', e instanceof Error ? e.message : String(e));
     return Response.json({ error: 'Não foi possível verificar seu acesso.' }, { status: 503 });
   }
 }

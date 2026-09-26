@@ -79,7 +79,7 @@ export async function usuarioDaRequisicao(request: Request): Promise<Usuario | n
         .bind(new Date(Date.now() + DIAS * 86400_000).toISOString(), id).run();
     }
     return { id: linha.id, email: linha.email, name: linha.name, role: linha.role };
-  } catch { return null; }
+  } catch (e) { console.error('FALHA ao ler a sessao:', e instanceof Error ? e.message : String(e)); return null; }
 }
 
 const negado = (msg: string, status: number) =>

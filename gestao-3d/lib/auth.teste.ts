@@ -1,6 +1,7 @@
 /* node --experimental-strip-types lib/auth.teste.ts */
 import { hashSenha, conferirSenha, senhaPrecisaRehash, novoToken, hashToken,
-         comparaSegura, normalizarEmail, emailValido, problemaNaSenha } from './auth.ts';
+         comparaSegura, normalizarEmail, emailValido, problemaNaSenha,
+         ITERACOES_PADRAO } from './auth.ts';
 
 let passou = 0, falhou = 0;
 const ok = (n: string, c: boolean, d?: string) => {
@@ -26,8 +27,13 @@ titulo('1. Senha');
   ok('iterações absurdas são recusadas', !(await conferirSenha('x', 'pbkdf2$99999999$aa$bb')));
   ok('algoritmo desconhecido é recusado', !(await conferirSenha('x', 'md5$1000$aa$bb')));
 
-  const antigo = await hashSenha('abc123456789', 20000);
-  ok('detecta hash feito com custo menor', senhaPrecisaRehash(antigo));
+  // Derivado do padrão de propósito: assim este teste continua valendo quando o
+  // número de iterações mudar, em vez de quebrar junto.
+  const menor = Math.max(1000, Math.floor(ITERACOES_PADRAO / 3));
+  const antigo = await hashSenha('abc123456789', menor);
+  ok('detecta hash feito com custo menor que o atual', senhaPrecisaRehash(antigo));
+  ok('e um hash com custo MAIOR não pede regravação',
+     !senhaPrecisaRehash(await hashSenha('abc123456789', ITERACOES_PADRAO * 2)));
   ok('não pede rehash do hash atual', !senhaPrecisaRehash(h));
   ok('hash antigo ainda confere', await conferirSenha('abc123456789', antigo));
 }

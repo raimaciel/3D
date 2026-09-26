@@ -8,11 +8,28 @@
  * Usa só WebCrypto, que existe nos três ambientes.
  */
 
-// PBKDF2 é o algoritmo de senha que o Workers oferece nativamente. O número de
-// iterações fica GRAVADO junto do hash, então dá para aumentar depois sem
-// invalidar as senhas antigas: o hash antigo continua sendo conferido com o
-// número dele, e é regravado no próximo login.
-export const ITERACOES_PADRAO = 150_000;
+/*
+ * PBKDF2 é o algoritmo de senha que o Workers oferece nativamente.
+ *
+ * ESTE NÚMERO ESTÁ BAIXO DE PROPÓSITO, E É UMA CONCESSÃO, NÃO UMA ESCOLHA.
+ *
+ * O plano grátis do Workers dá 10 ms de CPU por requisição. Medido aqui:
+ *   150.000 iterações → 35 ms   (o ideal; estoura o limite)
+ *    40.000 iterações →  9 ms   (no limite, sem margem para o resto)
+ *    15.000 iterações →  3,6 ms (cabe com folga)
+ * Com 150.000 o cadastro do primeiro acesso falhava com erro 503 em produção.
+ *
+ * O que compensa parcialmente: senha de no mínimo 10 caracteres, trava após 8
+ * tentativas por e-mail, e o hash nunca é exposto publicamente.
+ *
+ * COMO VOLTAR AO IDEAL: com o plano Workers Paid (US$ 5/mês), o limite passa a
+ * 30 segundos. Aí basta trocar este número por 300_000 e publicar. Nenhuma senha
+ * é invalidada: o número de iterações fica GRAVADO dentro de cada hash, então as
+ * senhas antigas continuam sendo conferidas com o número delas e são regravadas
+ * no formato novo no próximo login de cada pessoa. Foi para isso que o formato
+ * foi desenhado assim.
+ */
+export const ITERACOES_PADRAO = 15_000;
 
 const enc = new TextEncoder();
 const paraHex = (b: ArrayBuffer) => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');

@@ -47,7 +47,9 @@ export async function POST(request: Request) {
     return Response.json(
       { usuario: { id: u.id, email: u.email, name: u.name, role: u.role } },
       { headers: { 'Set-Cookie': cookieDeEntrada(request, token), 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (e) {
+    console.error('FALHA EM /api/auth/login:', e instanceof Error ? e.message : String(e),
+                  e instanceof Error ? e.stack : '');
     return Response.json({ error: 'Não foi possível entrar. Tente de novo.' }, { status: 503 });
   }
 }
