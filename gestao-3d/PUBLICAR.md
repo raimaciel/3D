@@ -1,140 +1,148 @@
-# Publicar o Gestão 3D
+# Publicar o Gestão 3D — sem terminal
 
-Guia para colocar o sistema no ar na Cloudflare, no domínio `fabricando3d.com.br`.
+Tudo pelo navegador, no painel da Cloudflare. Nada para instalar no computador.
 
-Leia até o fim antes de começar. São uns 30 a 60 minutos na primeira vez.
-
----
-
-## Antes de qualquer coisa: uma coisa que trava gente no meio
-
-**A Cloudflare exige um cartão cadastrado para habilitar o R2**, que é onde os STL, 3MF e fotos vão ficar. Mesmo no plano grátis. Não cobra nada enquanto você estiver dentro do limite (10 GB, com download ilimitado e gratuito), mas sem cartão o botão de ativar nem funciona.
-
-Se você não quiser cadastrar cartão agora, dá para publicar **sem** o R2: o sistema sobe, o login funciona, os orçamentos funcionam, e só o envio de arquivo e foto fica indisponível. Me avise que eu ajusto.
+Leia até o fim antes de começar. Na primeira vez leva uns 40 minutos.
 
 ---
 
-## Parte 1 — Na Cloudflare, pelo navegador
+## Como vamos dividir o trabalho
 
-1. **Crie a conta** em `dash.cloudflare.com` (grátis).
-2. **Cadastre um cartão** em Billing / Faturamento.
-3. **Ative o R2** no menu lateral, em R2 Object Storage.
-4. **Crie o bucket** do R2 com o nome `fabricando3d-arquivos`.
-5. **Crie o banco D1** no menu Storage & Databases → D1, com o nome `fabricando3d`.
-   Quando ele abrir, **anote o Database ID** — é um código com traços, parecido com
-   `a1b2c3d4-0000-4444-8888-99887766aabb`. Você vai precisar dele.
+Algumas coisas só você pode fazer, porque são na sua conta. O resto eu faço.
 
----
+| Quem | O quê |
+|---|---|
+| **Você** | Passos 1 a 4: conta, cartão, bucket, banco, tabelas |
+| **Eu** | Configuro o repositório com o id do seu banco |
+| **Você** | Passos 5 a 8: conectar, publicar, primeiro acesso, domínio |
 
-## Parte 2 — Criar as tabelas do banco
-
-O banco nasce vazio. Precisa criar as tabelas **uma única vez**.
-
-Pelo painel: abra o banco `fabricando3d`, vá na aba de **Console** (ou "Query"), e cole o conteúdo de cada arquivo abaixo, **um de cada vez, nesta ordem**, executando cada um:
-
-1. `drizzle/0000_small_solo.sql` — a tabela dos dados do sistema
-2. `drizzle/0001_login.sql` — as tabelas de login, sessão e trava de senha
-
-Os dois arquivos estão neste repositório, na pasta `drizzle/`.
-
-Para conferir que deu certo, rode no console: `SELECT name FROM sqlite_master WHERE type='table';`
-Devem aparecer: `workspace`, `users`, `sessions`, `login_attempts`.
+Faça os passos 1 a 4, me mande o id do banco, e eu te aviso quando puder seguir.
 
 ---
 
-## Parte 3 — Publicar o sistema
+## Passo 1 — Conta e cartão
 
-Há dois caminhos. **Escolha um.**
+1. Crie a conta em **dash.cloudflare.com** (grátis).
+2. Cadastre um cartão na área de **Billing / Faturamento**.
 
-### Caminho A — Sem terminal, pelo painel (recomendado se você nunca usou terminal)
+O cartão é exigido para habilitar o R2, que guarda os STL, 3MF e fotos. **Não há cobrança** dentro do limite grátis: 10 GB de espaço e download ilimitado e gratuito. Eu te aviso se o uso chegar perto disso.
 
-A Cloudflare consegue publicar direto do GitHub, sem você instalar nada no computador.
+## Passo 2 — Criar o lugar dos arquivos (R2)
 
-No painel, em Workers & Pages, crie um Worker conectado a este repositório
-(`raimaciel/3D`), apontando para a pasta `gestao-3d`, e configure:
+1. No menu lateral, abra **R2 Object Storage** e ative.
+2. Crie um bucket chamado exatamente: `fabricando3d-arquivos`
 
+## Passo 3 — Criar o banco de dados (D1)
+
+1. No menu lateral, abra **Storage & Databases → D1**.
+2. Crie um banco chamado exatamente: `fabricando3d`
+3. Quando ele abrir, **copie o Database ID**. É um código com traços, parecido com
+   `a1b2c3d4-0000-4444-8888-99887766aabb`.
+
+> Esse id não é segredo: ele só identifica o banco, e ninguém acessa nada sem estar
+> logado na sua conta. Pode me mandar por aqui sem problema.
+
+## Passo 4 — Criar as tabelas
+
+O banco nasce vazio. Isto é feito **uma vez só**.
+
+1. Ainda no banco `fabricando3d`, abra a aba **Console** (pode se chamar "Query").
+2. Abra o arquivo **`drizzle/TUDO-colar-no-painel.sql`** deste repositório,
+   copie o conteúdo **inteiro** e cole no console.
+3. Execute.
+
+Para conferir, rode no mesmo console:
+
+```sql
+SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;
+```
+
+Devem aparecer **quatro**: `login_attempts`, `sessions`, `users`, `workspace`.
+
+### ⏸ Pare aqui e me mande o id do banco
+
+Com o id eu configuro o repositório. Aí você segue do passo 5.
+
+---
+
+## Passo 5 — Conectar o repositório
+
+No painel, em **Workers & Pages**, crie um Worker a partir do repositório
+`raimaciel/3D` do GitHub. Na configuração:
+
+- **Pasta do projeto (root directory):** `gestao-3d`
 - **Comando de instalação:** `pnpm install --frozen-lockfile`
 - **Comando de build:** `pnpm build`
 - **Comando de deploy:** `npx wrangler deploy --config dist/server/wrangler.json`
-- **Variáveis de ambiente do build:**
-  `CF_WORKER_NAME=fabricando3d`, `CF_D1_NOME=fabricando3d`,
-  `CF_D1_ID=<o id que você anotou>`, `CF_R2_BUCKET=fabricando3d-arquivos`
 
-Depois, nas configurações do Worker, ligue os **bindings**: `DB` para o banco
-`fabricando3d` e `BUCKET` para o bucket `fabricando3d-arquivos`.
+## Passo 6 — Ligar o banco e os arquivos
 
-> As telas da Cloudflare mudam de tempos em tempos. Se algum nome estiver
-> diferente do que está escrito aqui, me mande um print que eu te digo onde
-> clicar.
+Nas configurações do Worker, na parte de **Bindings**, adicione dois:
 
-### Caminho B — Pelo terminal
+| Tipo | Nome do binding | Aponta para |
+|---|---|---|
+| D1 database | `DB` | `fabricando3d` |
+| R2 bucket | `BUCKET` | `fabricando3d-arquivos` |
 
-Precisa de **Node.js 22 ou superior** e **pnpm 11** instalados.
+Os nomes `DB` e `BUCKET` têm que ser **exatamente assim** — é como o código os
+procura.
 
-```bash
-git clone https://github.com/raimaciel/3D.git
-cd 3D/gestao-3d
-pnpm install --frozen-lockfile
+## Passo 7 — Publicar, e criar seu acesso NA MESMA HORA
 
-cp .env.exemplo .env
-# abra o .env e preencha o CF_D1_ID com o id que você anotou
+Mande publicar. Ao terminar, aparece um endereço terminado em `.workers.dev`.
 
-npx wrangler login          # abre o navegador para autorizar
+**Abra esse endereço imediatamente e crie seu acesso.**
 
-bash scripts/publicar.sh --simular   # confere tudo sem publicar
-bash scripts/publicar.sh             # publica de verdade
-```
+Não deixe para depois. Enquanto ninguém criar a primeira conta, quem abrir o
+endereço pode criá-la no seu lugar e virar o administrador. Depois que você criar,
+essa tela fecha para sempre.
 
-O script roda os testes, compila, cria as tabelas e publica. Se faltar algo, ele
-para e diz exatamente o que fazer.
+> Se preferir fechar essa janela antes de publicar: nas configurações do Worker,
+> em **Variables**, adicione um **Secret** chamado `SETUP_TOKEN` com uma frase que
+> só você saiba. A tela de primeiro acesso passa a exigir essa frase.
 
----
+## Passo 8 — Apontar o fabricando3d.com.br
 
-## Parte 4 — O PRIMEIRO ACESSO, e por que é urgente
-
-Assim que publicar, o sistema fica com **uma janela aberta**: enquanto ninguém
-tiver criado a primeira conta, **quem abrir o endereço pode criá-la no seu lugar**
-e virar o administrador.
-
-Então, ao terminar de publicar:
-
-1. Abra o endereço na mesma hora.
-2. Crie o seu acesso na tela "Criar o primeiro acesso".
-
-Depois disso essa tela fecha para sempre e o sistema só abre com login.
-
-**Se você preferir fechar a janela antes**, dá para exigir um código secreto na
-criação do primeiro acesso:
-
-```bash
-npx wrangler secret put SETUP_TOKEN
-```
-
-Ele pede um valor; invente uma frase e guarde. Aí a tela de primeiro acesso passa
-a exigir esse código, e ninguém cria a conta sem ele. No Caminho A, o mesmo se faz
-no painel, em Settings → Variables → adicionar um **Secret** chamado `SETUP_TOKEN`.
-
----
-
-## Parte 5 — Apontar o fabricando3d.com.br
-
-Com o sistema no ar, ele responde num endereço temporário terminado em
-`.workers.dev`. Para usar o seu domínio:
-
-1. Adicione `fabricando3d.com.br` à sua conta Cloudflare (menu de domínios).
+1. Adicione o domínio à sua conta Cloudflare.
 2. A Cloudflare vai te dar dois servidores de DNS. Troque-os no site onde você
    registrou o domínio.
-3. Depois que o domínio ficar ativo, volte no Worker e adicione um
-   **Custom Domain** com `fabricando3d.com.br`.
+3. Quando o domínio ficar ativo, volte no Worker e adicione um **Custom Domain**
+   com `fabricando3d.com.br`.
 
-A troca de DNS pode levar de minutos a algumas horas para valer em todo lugar.
+A troca de DNS pode levar de minutos a algumas horas.
+
+---
+
+## Se alguma tela estiver diferente
+
+As telas da Cloudflare mudam de tempos em tempos, e este guia descreve a estrutura,
+não os botões exatos. **Me mande um print de qualquer tela que não bater** e eu te
+digo onde clicar.
 
 ---
 
 ## Depois de publicado
 
-- **Backup**: o sistema exporta os dados em Configurações → Backup. Faça isso de
-  vez em quando e guarde o arquivo fora da Cloudflare.
-- **Conferir que está fechado**: com o sistema no ar, rode
-  `bash scripts/teste-acesso.sh https://seu-endereco` — deve dar `9 passaram, 0 falharam`.
-- **Custo**: dentro dos limites grátis, zero. Se o uso crescer, a Cloudflare avisa.
+- **Backup**: em Configurações → Backup, o sistema exporta tudo num arquivo.
+  Faça de vez em quando e guarde fora da Cloudflare.
+- **Custo**: zero dentro dos limites grátis.
+- **Conferir que está fechado**: me passe o endereço que eu confiro se a API está
+  recusando quem não entrou.
+
+---
+
+## Apêndice — pelo terminal
+
+Se um dia você quiser o caminho por linha de comando, ele existe:
+
+```bash
+git clone https://github.com/raimaciel/3D.git
+cd 3D/gestao-3d
+pnpm install --frozen-lockfile
+cp .env.exemplo .env          # preencha o CF_D1_ID
+npx wrangler login
+bash scripts/publicar.sh --simular
+bash scripts/publicar.sh
+```
+
+Precisa de Node.js 22 e pnpm 11.
