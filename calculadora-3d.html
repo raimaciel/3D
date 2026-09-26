@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de Custos 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#132840; --navy-2:#1B3350; --navy-3:#21405E; --line:#2A4868;
+  --teal:#1CB8C4; --teal-2:#2CCAD5; --teal-soft:rgba(28,184,196,.14);
+  --ink:#FFFFFF; --muted:#A7B7C8; --dim:#7E93AA;
+  --bg:#EEF2F6; --card:#FFFFFF; --text:#132840; --text-2:#51667D; --border:#D6DFE8; --field:#F6F8FB;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1F33; --card:#132840; --text:#FFFFFF; --text-2:#A7B7C8; --border:#2A4868; --field:#1B3350;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1F33; --card:#132840; --text:#FFFFFF; --text-2:#A7B7C8; --border:#2A4868; --field:#1B3350;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.5 Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.num{font-family:Sora,Figtree,system-ui,sans-serif}
+
+/* Topo */
+.top{background:var(--navy);color:var(--ink);padding:20px 20px 88px}
+.brand{display:flex;align-items:center;gap:14px;max-width:1080px;margin:0 auto}
+.mark{width:48px;height:48px;border-radius:13px;background:var(--teal);display:grid;place-items:center;flex:none}
+.mark svg{width:26px;height:26px;stroke:var(--navy)}
+.brand h1{margin:0;font-size:1.3rem;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:.85rem}
+.brand .theme{margin-left:auto;background:var(--navy-3);border:0;color:var(--ink);width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:1rem}
+
+.wrap{max-width:1080px;margin:-64px auto 0;padding:0 16px 40px;display:grid;gap:16px}
+@media (min-width:900px){.wrap{grid-template-columns:1fr 380px;align-items:start}}
+
+/* Resultado */
+.result{background:var(--navy-2);color:var(--ink);border-radius:20px;padding:22px;border:1px solid var(--line);order:-1}
+@media (min-width:900px){.result{order:0;position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}}
+.result .lbl{color:var(--muted);font-size:.9rem;margin:0}
+.price{font-size:clamp(2.6rem,11vw,3.4rem);font-weight:700;letter-spacing:-.03em;line-height:1.05;margin:4px 0 2px;color:var(--teal-2)}
+.price small{font-size:.4em;color:var(--muted);font-weight:500;letter-spacing:0}
+.sub{color:var(--muted);font-size:.9rem;margin:0 0 18px}
+.bar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--navy-3);margin-bottom:14px}
+.bar span{display:block;height:100%;transition:width .3s}
+.rows{list-style:none;margin:0;padding:0;font-size:.92rem}
+.rows li{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+.rows li:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.rows .v{margin-left:auto;font-variant-numeric:tabular-nums}
+.total{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.total div{background:var(--navy-3);border-radius:12px;padding:12px}
+.total p{margin:0;color:var(--muted);font-size:.8rem}
+.total b{display:block;font-family:Sora,sans-serif;font-size:1.15rem;margin-top:2px;font-variant-numeric:tabular-nums}
+.total .profit b{color:var(--teal-2)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn.full{flex:1 1 100%}
+.empresa-box{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border)}
+.empresa-tit{margin:0 0 12px;font-size:.85rem;font-weight:600;color:var(--text-2)}
+.empresa-tit span{font-weight:400;color:var(--dim)}
+.logo-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo-prev{width:54px;height:54px;border-radius:10px;object-fit:contain;background:var(--field);border:1px solid var(--border);display:none;padding:4px}
+.logo-prev.show{display:block}
+.file-btn{display:inline-block;background:var(--field);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:11px;font:600 .9rem Figtree,sans-serif;cursor:pointer}
+.file-btn:hover{border-color:var(--teal)}
+.link-btn{background:none;border:0;color:#E86A6A;font:500 .88rem Figtree,sans-serif;cursor:pointer;padding:6px}
+.btn{flex:1;border:0;border-radius:12px;padding:12px;font:600 .95rem Figtree,sans-serif;cursor:pointer}
+.btn.primary{background:var(--teal);color:var(--navy)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.seg button:focus-visible{outline:3px solid var(--teal-2);outline-offset:2px}
+
+/* Formulário */
+.form{display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px}
+.card h2{margin:0 0 14px;font-size:1.02rem;font-weight:600;display:flex;align-items:center;gap:10px}
+.card h2 i{width:30px;height:30px;border-radius:9px;background:var(--teal-soft);display:grid;place-items:center;font-style:normal;font-size:.95rem}
+.grid{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.grid .full{grid-column:1/-1}
+label{display:block;font-size:.85rem;color:var(--text-2);font-weight:500;margin-bottom:5px}
+.field{position:relative}
+input,select{width:100%;background:var(--field);border:1px solid var(--border);color:var(--text);border-radius:11px;padding:11px 12px;font:500 1rem Figtree,sans-serif;appearance:none;-webkit-appearance:none}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--text-2) 50%),linear-gradient(135deg,var(--text-2) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:.85rem;pointer-events:none}
+.has-unit input{padding-right:48px}
+.hint{font-size:.8rem;color:var(--dim);margin:6px 0 0}
+.seg{display:flex;background:var(--field);border:1px solid var(--border);border-radius:12px;padding:4px;gap:4px;margin-bottom:14px}
+.seg button{flex:1;border:0;background:transparent;color:var(--text-2);padding:9px;border-radius:9px;font:600 .9rem Figtree,sans-serif;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--navy);color:var(--ink)}
+:root[data-theme="dark"] .seg button[aria-pressed="true"]{background:var(--teal);color:var(--navy)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .seg button[aria-pressed="true"]{background:var(--teal);color:var(--navy)}}
+.roi-card{border-color:var(--teal)}
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.presets button{background:var(--field);border:1px solid var(--border);color:var(--text-2);border-radius:12px;padding:9px 6px;font:600 .85rem Figtree,sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px}
+.presets button small{font-weight:500;font-size:.78rem;opacity:.8}
+.presets button[aria-pressed="true"]{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.presets button:focus-visible{outline:3px solid var(--teal-2);outline-offset:2px}
+.btn.calc{padding:15px;font-size:1.02rem;box-shadow:0 8px 24px rgba(28,184,196,.28)}
+.erro{color:#E86A6A}
+.rows.venda{margin-top:10px;padding-top:6px;border-top:1px dashed var(--line)}
+.rows .neg{color:var(--muted)}
+.hidden{display:none}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+input.money{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Orçamento para impressão / PDF */
+#printArea{display:none}
+.doc-head{background:var(--navy);color:#fff;padding:22px 26px;display:flex;align-items:center;gap:16px}
+.doc-head img{max-height:52px;max-width:150px;object-fit:contain}
+.doc-mark{width:44px;height:44px;border-radius:11px;background:var(--teal);display:grid;place-items:center;flex:none}
+.doc-mark svg{width:24px;height:24px;stroke:var(--navy)}
+.doc-head h2{margin:0;font-family:Sora,sans-serif;font-size:1.35rem}
+.doc-head p{margin:3px 0 0;color:#A7B7C8;font-size:.85rem}
+.doc-body{padding:26px}
+.doc-body h3{font-family:Sora,sans-serif;margin:0 0 4px;color:#132840;font-size:1.2rem}
+.doc-meta{color:#51667D;font-size:.92rem;margin:0 0 18px}
+.doc-meta b{color:#132840}
+.doc-table{width:100%;border-collapse:collapse;margin-bottom:8px}
+.doc-table td{padding:8px 0;border-bottom:1px solid #E4EAF1;color:#51667D;font-size:.95rem}
+.doc-table td:last-child{text-align:right;font-variant-numeric:tabular-nums;color:#132840}
+.doc-table tr.tot td{font-weight:700;color:#132840;border-bottom:2px solid #132840}
+.doc-price{background:var(--navy);color:#fff;border-radius:12px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;margin-top:20px}
+.doc-price .p-lbl{color:#A7B7C8;font-size:.85rem;margin:0}
+.doc-price .p-val{font-family:Sora,sans-serif;font-size:1.9rem;font-weight:700;color:var(--teal-2);margin:2px 0 0}
+.doc-price .p-side{text-align:right;font-size:.85rem;color:#A7B7C8;line-height:1.6}
+.doc-foot{color:#96A3B2;font-size:.78rem;margin:22px 26px 0;padding-top:12px;border-top:1px solid #E4EAF1}
+
+@media print{
+  header.top, main.wrap{display:none!important}
+  #printArea{display:block!important}
+  body{background:#fff}
+  @page{margin:14mm}
+  .doc-head,.doc-price{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg></div>
+    <div>
+      <h1>Calculadora de custos 3D</h1>
+      <p>Quanto custa e por quanto vender cada impressão</p>
+    </div>
+    <button class="theme" id="theme" aria-label="Alternar tema claro/escuro">◐</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="form">
+
+    <section class="card">
+      <h2><i>🧾</i>Orçamento</h2>
+      <div class="grid">
+        <div class="full"><label for="cliente">Nome do cliente</label><input id="cliente" type="text" placeholder="Ex.: João da Silva"></div>
+      </div>
+      <div class="empresa-box">
+        <p class="empresa-tit">Seus dados <span>(ficam salvos e entram no PDF)</span></p>
+        <div class="grid">
+          <div><label for="empresa">Nome da empresa</label><input id="empresa" type="text" placeholder="Sua marca 3D"></div>
+          <div><label for="telefone">Telefone / contato</label><input id="telefone" type="text" placeholder="(85) 90000-0000"></div>
+          <div class="full">
+            <label>Logo</label>
+            <div class="logo-row">
+              <img id="logoPrev" class="logo-prev" alt="Prévia do logo">
+              <label class="file-btn" for="logo">Escolher logo</label>
+              <input id="logo" type="file" accept="image/*" hidden>
+              <button type="button" class="link-btn hidden" id="removerLogo">Remover</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>🧩</i>Peça</h2>
+      <div class="seg" role="group" aria-label="Modo de cálculo">
+        <button type="button" data-mode="peca" aria-pressed="true">Por peça</button>
+        <button type="button" data-mode="lote" aria-pressed="false">Por lote</button>
+      </div>
+      <div class="grid">
+        <div class="full"><label for="nome">Nome da peça</label><input id="nome" type="text" placeholder="Ex.: Suporte de headset"></div>
+        <div class="field has-unit"><label for="peso">Peso do filamento</label><div class="field"><input id="peso" type="number" inputmode="decimal" min="0" step="0.1" value="0"><span class="unit">g</span></div></div>
+        <div class="lote hidden"><label for="qtd">Peças no lote</label><input id="qtd" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
+        <p class="hint full">Use o peso que o Bambu Studio mostra depois de fatiar.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>🧵</i>Material</h2>
+      <div class="grid">
+        <div class="full"><label for="material">Filamento</label>
+          <select id="material">
+            <option value="">Selecione o filamento…</option>
+            <option>PETG</option>
+            <option>PLA</option>
+            <option>ABS</option>
+            <option>ASA</option>
+            <option>TPU</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="field full has-unit"><label for="precoKg">Preço do rolo (1 kg)</label><div class="field"><input id="precoKg" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$</span></div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>⏱️</i>Tempo e energia</h2>
+      <div class="grid">
+        <div class="full"><label>Tempo de impressão</label>
+          <div class="grid">
+            <div class="field has-unit"><input id="horas" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="Horas"><span class="unit">h</span></div>
+            <div class="field has-unit"><input id="minutos" type="number" inputmode="numeric" min="0" max="59" step="1" value="0" aria-label="Minutos"><span class="unit">min</span></div>
+          </div>
+        </div>
+        <div><label for="potencia">Consumo</label><div class="field has-unit"><input id="potencia" type="number" inputmode="decimal" min="0" value="0"><span class="unit">W</span></div></div>
+        <div><label for="kwh">Tarifa de energia</label><div class="field has-unit"><input id="kwh" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$/kWh</span></div></div>
+        <div class="full"><label for="estado">Estado (tarifa média)</label>
+          <select id="estado">
+            <option value="">Selecione seu estado…</option>
+          </select>
+        </div>
+        <p class="hint full">Escolher o estado já preenche a tarifa média da concessionária. Você pode ajustar o valor pela sua conta de luz.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>🖨️</i>Equipamento</h2>
+      <div class="grid">
+        <div><label for="marca">Marca da impressora</label>
+          <select id="marca"><option value="">Selecione a marca…</option></select>
+        </div>
+        <div><label for="modelo">Modelo</label>
+          <select id="modelo" disabled><option value="">Selecione o modelo…</option></select>
+        </div>
+        <div><label for="valorMaq">Valor da impressora</label><div class="field has-unit"><input id="valorMaq" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$</span></div></div>
+        <div><label for="vidaMaq">Vida útil</label><div class="field has-unit"><input id="vidaMaq" type="number" inputmode="numeric" min="0" value="0"><span class="unit">h</span></div></div>
+        <p class="hint full">Ao escolher o modelo, o consumo em watts é preenchido sozinho. Confira e ajuste se precisar.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>🛠️</i>Trabalho e extras</h2>
+      <div class="grid">
+        <div><label for="maoMin">Seu tempo na peça</label><div class="field has-unit"><input id="maoMin" type="number" inputmode="numeric" min="0" value="0"><span class="unit">min</span></div></div>
+        <div><label for="maoHora">Valor da sua hora</label><div class="field has-unit"><input id="maoHora" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$/h</span></div></div>
+        <div><label for="falha">Margem de falha</label><div class="field has-unit"><input id="falha" type="number" inputmode="decimal" min="0" max="100" value="0"><span class="unit">%</span></div></div>
+        <div><label for="extras">Embalagem e extras</label><div class="field has-unit"><input id="extras" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$</span></div></div>
+        <p class="hint full">Tempo de preparo, remoção de suportes, lixa e embalagem. A margem de falha cobre impressões perdidas.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><i>🧾</i>Taxas e anúncios</h2>
+      <div class="grid">
+        <div><label for="imposto">Imposto federal</label><div class="field has-unit"><input id="imposto" type="number" inputmode="decimal" min="0" max="90" step="0.01" value="0"><span class="unit">%</span></div></div>
+        <div><label for="taxa">Taxa de marketplace</label><div class="field has-unit"><input id="taxa" type="number" inputmode="decimal" min="0" max="90" step="0.01" value="0"><span class="unit">%</span></div></div>
+        <div><label for="taxaFixa">Taxa fixa por venda</label><div class="field has-unit"><input id="taxaFixa" class="money" type="text" inputmode="numeric" autocomplete="off" value="0,00"><span class="unit">R$</span></div></div>
+        <div><label for="roas">ROAS médio</label><div class="field has-unit"><input id="roas" type="number" inputmode="decimal" min="0" step="0.1" value="0"><span class="unit">x</span></div></div>
+        <p class="hint full">ROAS é quanto cada R$1 de anúncio traz em vendas. Com ROAS 5, o anúncio custa 20% do preço. Deixe 0 se não anuncia.</p>
+      </div>
+    </section>
+
+    <section class="card roi-card">
+      <h2><i>📈</i>ROI e cálculo final</h2>
+      <div class="grid">
+        <div class="full"><label for="roi">ROI desejado</label><div class="field has-unit"><input id="roi" type="number" inputmode="decimal" min="0" step="1" value="250"><span class="unit">%</span></div></div>
+        <div class="full presets" role="group" aria-label="Perfis de ROI">
+          <button type="button" data-roi="100">Conservador<small>100%</small></button>
+          <button type="button" data-roi="250">Normal<small>250%</small></button>
+          <button type="button" data-roi="500">Agressivo<small>500%</small></button>
+        </div>
+        <p class="hint full">ROI é o lucro sobre o custo. Com ROI de 250%, uma peça que custa R$10 deixa R$25 de lucro depois de todas as taxas.</p>
+        <button type="button" class="btn primary full calc" id="calcular">Calcular custos e lucros</button>
+        <p class="hint full erro hidden" id="erro"></p>
+      </div>
+    </section>
+  </div>
+
+  <aside class="result" aria-live="polite">
+    <p class="lbl" id="lblPreco">Preço de venda sugerido por peça</p>
+    <p class="price num" id="preco">R$ 0,00</p>
+    <p class="sub" id="subPreco">Custo total R$ 0,00</p>
+    <div class="bar" id="bar"></div>
+    <ul class="rows" id="rows"></ul>
+    <ul class="rows venda" id="rowsVenda"></ul>
+    <div class="total">
+      <div><p>Custo por peça</p><b id="custo">R$ 0,00</b></div>
+      <div class="profit"><p>Lucro por peça</p><b id="ganho">R$ 0,00</b></div>
+      <div><p>Taxas e anúncios</p><b id="descontos">R$ 0,00</b></div>
+      <div class="profit"><p>ROI real</p><b id="roiReal">0%</b></div>
+      <div class="lote hidden"><p>Total do lote</p><b id="totLote">R$ 0,00</b></div>
+      <div class="lote hidden profit"><p>Lucro do lote</p><b id="lucroLote">R$ 0,00</b></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary full" id="pdf">Salvar orçamento em PDF</button>
+      <button class="btn ghost" id="img">Salvar imagem</button>
+      <button class="btn ghost" id="copiar">Copiar texto</button>
+      <button class="btn ghost full" id="limpar">Restaurar padrões</button>
+    </div>
+  </aside>
+</main>
+
+<div id="printArea" aria-hidden="true"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const brl = v => (isFinite(v) ? v : 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const parseMoeda = str => { str = String(str).trim(); if(str.includes(',')) str = str.replace(/\./g,'').replace(',','.'); const v = parseFloat(str); return isNaN(v) ? 0 : v; };
+const fmtMoeda = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = id => { const el = $(id); if(el.classList.contains('money')) return parseMoeda(el.value); const v = parseFloat(String(el.value).replace(',','.')); return isNaN(v) ? 0 : v; };
+const campos = ['cliente','nome','peso','qtd','horas','minutos','material','precoKg','potencia','kwh','estado','marca','modelo','valorMaq','vidaMaq','maoMin','maoHora','falha','extras','imposto','taxa','taxaFixa','roas','roi'];
+const padrao = {}; campos.forEach(c => padrao[c] = $(c).value);
+let modo = 'peca';
+const CORES = {Filamento:'#1CB8C4',Energia:'#F2B94B',Máquina:'#7E93AA',"Mão de obra":'#8A7CF0',Extras:'#4FD1A1',Falhas:'#E86A6A'};
+
+// Dados da empresa: salvos à parte, não são zerados por "Restaurar padrões"
+let empresa = {nome:'', telefone:'', logo:'', logoW:0, logoH:0};
+function salvarEmpresa(){ try{ localStorage.setItem('calc3d-empresa', JSON.stringify(empresa)); }catch(e){} }
+function mostrarLogo(){
+  const prev = $('logoPrev');
+  if(empresa.logo){ prev.src = empresa.logo; prev.classList.add('show'); $('removerLogo').classList.remove('hidden'); }
+  else { prev.removeAttribute('src'); prev.classList.remove('show'); $('removerLogo').classList.add('hidden'); }
+}
+try{
+  const e = JSON.parse(localStorage.getItem('calc3d-empresa') || 'null');
+  if(e){ empresa = Object.assign(empresa, e); $('empresa').value = empresa.nome || ''; $('telefone').value = empresa.telefone || ''; mostrarLogo(); }
+}catch(e){}
+$('empresa').addEventListener('input', () => { empresa.nome = $('empresa').value; salvarEmpresa(); });
+$('telefone').addEventListener('input', () => { empresa.telefone = $('telefone').value; salvarEmpresa(); });
+$('logo').addEventListener('change', ev => {
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 260, scale = Math.min(1, max/Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      empresa.logo = c.toDataURL('image/png'); empresa.logoW = c.width; empresa.logoH = c.height;
+      try{ salvarEmpresa(); }catch(e){ alert('O logo ficou grande demais para salvar. Tente uma imagem menor.'); empresa.logo=''; }
+      mostrarLogo();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+$('removerLogo').onclick = () => { empresa.logo=''; empresa.logoW=0; empresa.logoH=0; $('logo').value=''; salvarEmpresa(); mostrarLogo(); };
+
+// Tarifa média por estado (R$/kWh) — valor de referência, ajuste pela sua conta
+const ESTADOS = [
+  ['Acre — Energisa AC',1.15],['Alagoas — Equatorial AL',1.05],['Amapá — CEA Equatorial',1.10],
+  ['Amazonas — Amazonas Energia',1.25],['Bahia — Neoenergia Coelba',1.18],['Ceará — Enel CE',1.12],
+  ['Distrito Federal — Neoenergia BSB',0.95],['Espírito Santo — EDP ES',1.08],['Goiás — Equatorial GO',1.10],
+  ['Maranhão — Equatorial MA',1.15],['Mato Grosso — Energisa MT',1.22],['Mato Grosso do Sul — Energisa MS',1.20],
+  ['Minas Gerais — Cemig',1.10],['Pará — Equatorial PA',1.30],['Paraíba — Energisa PB',1.05],
+  ['Paraná — Copel',1.02],['Pernambuco — Neoenergia PE',1.12],['Piauí — Equatorial PI',1.18],
+  ['Rio de Janeiro — Light / Enel',1.30],['Rio Grande do Norte — Neoenergia COSERN',1.10],
+  ['Rio Grande do Sul — CEEE / RGE',1.08],['Rondônia — Energisa RO',1.20],['Roraima — Roraima Energia',1.15],
+  ['Santa Catarina — Celesc',1.05],['São Paulo — Enel SP',0.98],['Sergipe — Energisa SE',1.10],
+  ['Tocantins — Energisa TO',1.18]
+];
+
+// Marcas e modelos com consumo médio (W). Valores de referência, edite se precisar.
+const MARCAS = {
+  'Creality':[['Ender 3 / V2',120],['Ender 3 V3 SE',150],['Ender 3 V3 KE',180],['K1',200],['K1 Max',250],['CR-10 SE',180]],
+  'Bambu Lab':[['A1 Mini',150],['A1',150],['P1P',350],['P1S',350],['X1 Carbon',400]],
+  'Anycubic':[['Kobra 2',180],['Kobra 2 Pro',200],['Kobra 2 Max',260],['Kobra 3',220]],
+  'Elegoo':[['Neptune 3 Pro',150],['Neptune 4',180],['Neptune 4 Plus',220],['Neptune 4 Max',260]],
+  'Prusa':[['MK3S+',120],['MK4',130],['CORE One',150],['MINI+',90]],
+  'Flashforge':[['Adventurer 5M',180],['Adventurer 5M Pro',200],['Guider 3',260]],
+  'Outras':[['Genérica',150]]
+};
+
+const selEstado = $('estado');
+ESTADOS.forEach(([nome,tarifa]) => { const o=document.createElement('option'); o.value=tarifa; o.textContent=`${nome} (${tarifa.toFixed(2).replace('.',',')})`; selEstado.appendChild(o); });
+selEstado.addEventListener('change', () => { if(selEstado.value){ $('kwh').value = fmtMoeda(Number(selEstado.value)); calcular(); } });
+
+const selMarca = $('marca'), selModelo = $('modelo');
+Object.keys(MARCAS).forEach(m => { const o=document.createElement('option'); o.value=m; o.textContent=m; selMarca.appendChild(o); });
+function preencherModelos(marca, modeloSalvo){
+  selModelo.innerHTML = '<option value="">Selecione o modelo…</option>';
+  if(!MARCAS[marca]){ selModelo.disabled = true; return; }
+  selModelo.disabled = false;
+  MARCAS[marca].forEach(([nome,w]) => { const o=document.createElement('option'); o.value=w; o.textContent=`${nome} (${w}W)`; o.dataset.nome=nome; selModelo.appendChild(o); });
+  if(modeloSalvo){ selModelo.value = modeloSalvo; }
+}
+selMarca.addEventListener('change', () => { preencherModelos(selMarca.value); calcular(); });
+selModelo.addEventListener('change', () => { if(selModelo.value){ $('potencia').value = selModelo.value; } calcular(); });
+
+function calcular(){
+  const qtd = modo === 'lote' ? Math.max(1, Math.round(num('qtd'))) : 1;
+  const horas = num('horas') + num('minutos')/60;
+  const itens = {
+    Filamento: num('peso')/1000 * num('precoKg'),
+    Energia: num('potencia')/1000 * horas * num('kwh'),
+    Máquina: num('vidaMaq') > 0 ? num('valorMaq')/num('vidaMaq') * horas : 0,
+    "Mão de obra": num('maoMin')/60 * num('maoHora'),
+    Extras: num('extras') * qtd
+  };
+  const base = Object.values(itens).reduce((a,b)=>a+b,0);
+  itens.Falhas = (itens.Filamento + itens.Energia + itens.Máquina) * num('falha')/100;
+  const custoTotal = base + itens.Falhas;
+  const custoPeca = custoTotal / qtd;
+
+  // Preço P tal que: P - P*imposto - P*marketplace - P/ROAS - taxaFixa - custo = custo * ROI
+  const imp = num('imposto')/100, mkt = num('taxa')/100, roas = num('roas');
+  const ads = roas > 0 ? 1/roas : 0;
+  const fixa = num('taxaFixa'), roi = num('roi')/100;
+  const perc = imp + mkt + ads;
+  const invalido = perc >= 0.95;
+  $('erro').classList.toggle('hidden', !invalido);
+  if(invalido) $('erro').textContent = `Imposto, marketplace e anúncios somam ${(perc*100).toFixed(0)}% do preço. Não sobra margem: aumente o ROAS ou reduza as taxas.`;
+  const preco = invalido ? 0 : (custoPeca*(1+roi) + fixa) / (1 - perc);
+  const desc = {
+    Imposto: preco*imp,
+    Marketplace: preco*mkt,
+    "Taxa fixa": invalido ? 0 : fixa,
+    Anúncios: preco*ads
+  };
+  const totalDesc = Object.values(desc).reduce((a,b)=>a+b,0);
+  const lucroPeca = preco - custoPeca - totalDesc;
+
+  $('preco').innerHTML = brl(preco).replace(/^R\$\s?/, '<small>R$</small> ');
+  $('lblPreco').textContent = 'Preço de venda sugerido por peça';
+  $('subPreco').textContent = `${horas.toFixed(1).replace('.',',')} h de impressão` + (totalDesc ? `, já com taxas e anúncios` : '');
+  $('custo').textContent = brl(custoPeca);
+  $('ganho').textContent = brl(lucroPeca);
+  $('descontos').textContent = brl(totalDesc);
+  $('roiReal').textContent = custoPeca > 0 ? Math.round(lucroPeca/custoPeca*100).toLocaleString('pt-BR') + '%' : '0%';
+  $('rowsVenda').innerHTML = Object.entries(desc).filter(([,v]) => v > 0).map(([k,v]) =>
+    `<li class="neg"><span class="dot" style="background:transparent;border:1.5px solid #7E93AA"></span>${k}<span class="v">${brl(v)}</span></li>`).join('');
+  document.querySelectorAll('.presets button').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.roi) === num('roi')));
+  $('totLote').textContent = brl(preco*qtd);
+  $('lucroLote').textContent = brl(lucroPeca*qtd);
+
+  $('bar').innerHTML = Object.entries(itens).map(([k,v]) => `<span style="width:${custoTotal? v/custoTotal*100:0}%;background:${CORES[k]}" title="${k}"></span>`).join('');
+  $('rows').innerHTML = Object.entries(itens).map(([k,v]) =>
+    `<li><span class="dot" style="background:${CORES[k]}"></span>${k}<span class="v">${brl(v/qtd)}</span></li>`).join('');
+
+  try{ const d={modo}; campos.forEach(c=>d[c]=$(c).value); localStorage.setItem('calc3d',JSON.stringify(d)); }catch(e){}
+  return {preco, custoPeca, lucroPeca, qtd, horas, itens};
+}
+
+function setModo(m){
+  modo = m;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === m));
+  document.querySelectorAll('.lote').forEach(el => el.classList.toggle('hidden', m !== 'lote'));
+  calcular();
+}
+
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => setModo(b.dataset.mode));
+// Máscara de moeda: digita só números, preenche a partir dos centavos (1,32 / 1.900,45)
+document.querySelectorAll('input.money').forEach(el => {
+  el.addEventListener('input', () => {
+    const d = el.value.replace(/\D/g,'').replace(/^0+/,'').slice(0,12);
+    el.value = fmtMoeda((parseInt(d || '0',10))/100);
+    el.setSelectionRange(el.value.length, el.value.length);
+  });
+  el.addEventListener('focus', () => setTimeout(() => el.setSelectionRange(el.value.length, el.value.length), 0));
+});
+// Tira zeros à esquerda (065 vira 65) ao sair do campo
+document.querySelectorAll('input[type="number"]').forEach(el => el.addEventListener('blur', () => {
+  if(el.value !== '' && !isNaN(parseFloat(el.value))) el.value = String(parseFloat(el.value));
+}));
+campos.forEach(c => $(c).addEventListener('input', calcular));
+$('material').addEventListener('change', calcular);
+
+document.querySelectorAll('.presets button').forEach(b => b.onclick = () => { $('roi').value = b.dataset.roi; calcular(); });
+$('calcular').onclick = () => {
+  calcular();
+  const res = document.querySelector('.result');
+  res.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'});
+  res.animate && res.animate([{boxShadow:'0 0 0 3px #2CCAD5'},{boxShadow:'0 0 0 0 transparent'}],{duration:900});
+};
+
+$('copiar').onclick = async () => {
+  const r = calcular();
+  const nome = $('nome').value.trim() || 'Peça impressa em 3D';
+  const mat = $('material').value || '—';
+  const cliente = $('cliente').value.trim();
+  let txt = (empresa.nome ? empresa.nome + '\n' : '') + `Orçamento: ${nome}\n` + (cliente ? `Cliente: ${cliente}\n` : '') + `Material: ${mat}\n`;
+  txt += r.qtd > 1 ? `Quantidade: ${r.qtd}\nValor por peça: ${brl(r.preco)}\nTotal: ${brl(r.preco*r.qtd)}` : `Valor: ${brl(r.preco)}`;
+  try{ await navigator.clipboard.writeText(txt); $('copiar').textContent='Copiado!'; }
+  catch(e){ $('copiar').textContent='Não foi possível copiar'; }
+  setTimeout(()=>$('copiar').textContent='Copiar texto',1800);
+};
+$('limpar').onclick = () => {
+  campos.forEach(c => $(c).value = padrao[c]);
+  $('material').value = '';
+  $('estado').value = '';
+  $('marca').value = '';
+  preencherModelos('');
+  try{ localStorage.removeItem('calc3d'); }catch(e){}
+  setModo('peca');
+  $('limpar').textContent = 'Zerado!';
+  setTimeout(()=>$('limpar').textContent='Restaurar padrões',1500);
+};
+
+function rr(ctx,x,y,w,h,rad){ctx.beginPath();ctx.moveTo(x+rad,y);ctx.arcTo(x+w,y,x+w,y+h,rad);ctx.arcTo(x+w,y+h,x,y+h,rad);ctx.arcTo(x,y+h,x,y,rad);ctx.arcTo(x,y,x+w,y,rad);ctx.closePath();}
+
+function desenharRecibo(logoImg){
+  const r = calcular();
+  const nome = ($('nome').value.trim() || 'Peça impressa em 3D');
+  const cliente = $('cliente').value.trim();
+  const mat = $('material').value || 'Não informado';
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const rows = Object.entries(r.itens);
+  const metaLinhas = (cliente?1:0) + 1;
+
+  const S=2, W=700, PAD=26, HEAD=118, ROW=32;
+  let H = HEAD + 24 + 30 + metaLinhas*22 + 14 + rows.length*ROW + 42 + 22 + 90 + 22 + 34;
+
+  const cv=document.createElement('canvas');
+  cv.width=W*S; cv.height=Math.round(H)*S;
+  const c=cv.getContext('2d'); c.scale(S,S);
+  c.textBaseline='alphabetic';
+  const navy='#132840', teal='#1CB8C4', teal2='#2CCAD5', muted='#A7B7C8', ink='#51667D', line='#E4EAF1';
+
+  // fundo branco
+  c.fillStyle='#fff'; c.fillRect(0,0,W,H);
+  // cabeçalho
+  c.fillStyle=navy; c.fillRect(0,0,W,HEAD);
+  let tx=PAD;
+  if(logoImg){ const h=54, w=Math.min(150, h*(logoImg.width/logoImg.height)); c.drawImage(logoImg,PAD,32,w,h); tx=PAD+w+16; }
+  else { c.fillStyle=teal; rr(c,PAD,37,44,44,11); c.fill(); tx=PAD+44+16; }
+  c.fillStyle='#fff'; c.font='700 22px sans-serif';
+  c.fillText(empresa.nome || 'Orçamento de impressão 3D', tx, 60);
+  c.fillStyle=muted; c.font='400 13px sans-serif';
+  c.fillText((empresa.telefone? empresa.telefone+'   ·   ':'')+'Emitido em '+hoje, tx, 82);
+
+  // corpo
+  let y=HEAD+26+22;
+  c.fillStyle=navy; c.font='700 20px sans-serif'; c.fillText(nome, PAD, y); y+=26;
+  c.font='400 14px sans-serif';
+  if(cliente){ c.fillStyle=ink; c.fillText('Cliente: ', PAD, y); const w=c.measureText('Cliente: ').width; c.fillStyle=navy; c.font='700 14px sans-serif'; c.fillText(cliente, PAD+w, y); c.font='400 14px sans-serif'; y+=22; }
+  c.fillStyle=ink;
+  let meta='Filamento: '+mat+'    ·    Tempo: '+r.horas.toFixed(1).replace('.',',')+' h';
+  if(r.qtd>1) meta+='    ·    Qtd: '+r.qtd+' peças';
+  c.fillText(meta, PAD, y); y+=14;
+
+  // tabela
+  rows.forEach(([k,v])=>{
+    y+=ROW;
+    c.fillStyle=ink; c.font='400 15px sans-serif'; c.textAlign='left'; c.fillText(k, PAD, y-10);
+    c.fillStyle=navy; c.textAlign='right'; c.fillText(brl(v/r.qtd), W-PAD, y-10);
+    c.strokeStyle=line; c.lineWidth=1; c.beginPath(); c.moveTo(PAD,y); c.lineTo(W-PAD,y); c.stroke();
+    c.textAlign='left';
+  });
+  // custo por peça
+  y+=ROW+6;
+  c.fillStyle=navy; c.font='700 15px sans-serif'; c.fillText('Custo por peça', PAD, y-12);
+  c.textAlign='right'; c.fillText(brl(r.custoPeca), W-PAD, y-12); c.textAlign='left';
+  c.strokeStyle=navy; c.lineWidth=2; c.beginPath(); c.moveTo(PAD,y); c.lineTo(W-PAD,y); c.stroke();
+
+  // caixa de preço
+  y+=22; const bx=PAD, bw=W-PAD*2, bh=90;
+  c.fillStyle=navy; rr(c,bx,y,bw,bh,12); c.fill();
+  c.fillStyle=muted; c.font='400 13px sans-serif'; c.fillText('Preço de venda por peça', bx+22, y+30);
+  c.fillStyle=teal2; c.font='700 30px sans-serif'; c.fillText(brl(r.preco), bx+22, y+66);
+  c.fillStyle=muted; c.font='400 13px sans-serif'; c.textAlign='right';
+  c.fillText('Lucro por peça: '+brl(r.lucroPeca), bx+bw-22, y+34);
+  if(r.qtd>1) c.fillText('Total ('+r.qtd+' un.): '+brl(r.preco*r.qtd), bx+bw-22, y+58);
+  c.textAlign='left';
+  y+=bh+30;
+  c.fillStyle='#96A3B2'; c.font='400 11px sans-serif';
+  c.fillText('Gerado pela Calculadora de custos 3D. Valores estimados, sujeitos a ajuste.', PAD, y);
+
+  return {cv, nome};
+}
+
+// --- Geração de arquivo (PDF/imagem) ---
+function b2u(b){ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }
+
+// Monta os bytes de um PDF (imagem JPEG embutida) sem biblioteca externa
+function buildPdfBytes(img, iw, ih){
+  const pw=595.28, ph=+(pw*ih/iw).toFixed(2), enc=new TextEncoder(), ch=[]; let off=0; const xr=[];
+  const P = x => { const b=(typeof x==='string')?enc.encode(x):x; ch.push(b); off+=b.length; };
+  P('%PDF-1.3\n');
+  xr[1]=off; P('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  xr[2]=off; P('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  xr[3]=off; P('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+pw+' '+ph+'] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n');
+  const ct='q '+pw+' 0 0 '+ph+' 0 0 cm /Im0 Do Q';
+  xr[4]=off; P('4 0 obj\n<< /Length '+ct.length+' >>\nstream\n'+ct+'\nendstream\nendobj\n');
+  xr[5]=off; P('5 0 obj\n<< /Type /XObject /Subtype /Image /Width '+iw+' /Height '+ih+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+img.length+' >>\nstream\n');
+  P(img); P('\nendstream\nendobj\n');
+  const xs=off;
+  let x='xref\n0 6\n0000000000 65535 f \n'; for(let i=1;i<=5;i++) x+=String(xr[i]).padStart(10,'0')+' 00000 n \n';
+  P(x); P('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xs+'\n%%EOF');
+  let t=0; ch.forEach(c=>t+=c.length); const o=new Uint8Array(t); let p=0; ch.forEach(c=>{ o.set(c,p); p+=c.length; });
+  return o;
+}
+
+function comLogo(){ return new Promise(res => {
+  if(empresa.logo){ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=empresa.logo; }
+  else res(null);
+}); }
+
+function flash(el, msg){ const o=el.textContent; el.textContent=msg; setTimeout(()=>el.textContent=o, 1800); }
+
+// Fallback para quando a página é aberta FORA do app (link direto no navegador),
+// onde não existe a capacidade de download do Claude.
+function fallbackArquivo(filename, blob, prevUrl){
+  try{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    if('download' in a){ a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); }
+    else { window.open(url, '_blank'); }
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    const w = window.open('', '_blank');
+    if(w && prevUrl){ w.document.write('<img src="'+prevUrl+'" style="max-width:100%">'); w.document.close(); }
+    else alert('Não foi possível preparar o arquivo neste navegador.');
+  }
+}
+
+async function salvar(filename, blob, btn, prevUrl){
+  let downloads = null;
+  try{ if(window.claude && claude.use) downloads = await claude.use('downloads'); }catch(e){ downloads = null; }
+  if(downloads){
+    try{
+      await downloads.save({filename, data: blob});
+      flash(btn, 'Salvo!');
+    }catch(err){
+      const code = err && err.code;
+      if(code === 'declined' || code === 'rate_limited'){ /* usuário cancelou: nada a fazer */ }
+      else { fallbackArquivo(filename, blob, prevUrl); }
+    }
+  } else {
+    fallbackArquivo(filename, blob, prevUrl);
+  }
+}
+
+$('pdf').onclick = async () => {
+  let out; try{ out = desenharRecibo(await comLogo()); }catch(e){ alert('Não foi possível gerar o orçamento. Tente de novo.'); return; }
+  const titulo = (out.nome.normalize('NFD').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-').toLowerCase().slice(0,40) || 'orcamento');
+  const jpeg = out.cv.toDataURL('image/jpeg', 0.92).split(',')[1];
+  const bytes = buildPdfBytes(b2u(jpeg), out.cv.width, out.cv.height);
+  const blob = new Blob([bytes], {type:'application/pdf'});
+  await salvar('orcamento-' + titulo + '.pdf', blob, $('pdf'), 'data:image/jpeg;base64,'+jpeg);
+};
+
+$('img').onclick = async () => {
+  let out; try{ out = desenharRecibo(await comLogo()); }catch(e){ alert('Não foi possível gerar o orçamento. Tente de novo.'); return; }
+  const titulo = (out.nome.normalize('NFD').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-').toLowerCase().slice(0,40) || 'orcamento');
+  out.cv.toBlob(async (blob) => {
+    if(!blob){ alert('Não foi possível gerar a imagem.'); return; }
+    await salvar('orcamento-' + titulo + '.png', blob, $('img'), out.cv.toDataURL('image/png'));
+  }, 'image/png');
+};
+
+const temaBtn = $('theme');
+temaBtn.onclick = () => {
+  const atual = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light');
+  const novo = atual === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = novo;
+  try{ localStorage.setItem('calc3d-tema', novo); }catch(e){}
+};
+
+try{
+  const t = localStorage.getItem('calc3d-tema'); if(t) document.documentElement.dataset.theme = t;
+  const d = JSON.parse(localStorage.getItem('calc3d') || 'null');
+  if(d){
+    if(d.marca) preencherModelos(d.marca, d.modelo);
+    campos.forEach(c => { if(d[c] !== undefined) $(c).value = $(c).classList.contains('money') ? fmtMoeda(parseMoeda(d[c])) : d[c]; });
+    modo = d.modo || 'peca';
+  }
+}catch(e){}
+setModo(modo);
+</script>
+</body>
+</html>
