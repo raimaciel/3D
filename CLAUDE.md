@@ -116,6 +116,22 @@ A diferença de unidade de energia é uma armadilha real: digitar `150` num camp
 
 Os dados reais **não estão no pacote** — ficaram no D1 da hospedagem de origem. O sistema tem exportação (Configurações → Backup → Exportar dados) mas **não tem importação**. Fotos e logo estão no R2, à parte. Exportar antes de perder acesso à hospedagem original é urgente; escrever a rotina de importação é trabalho a fazer.
 
+## Decisões de rumo tomadas pelo dono
+
+Estas três fecham questões que estavam em aberto. São dele; não as reabra por conta própria.
+
+**1. A fórmula de preço da calculadora é a que vale.** O preço passa a ser **calculado a partir do ROI**, sobrevivendo a imposto, marketplace e ROAS, e não mais digitado à mão como no Gestão 3D. O motor é `precificacao.js`, que já está testado — leve-o para dentro do sistema, não reescreva.
+
+Interpretação aplicada, sujeita a correção dele: a decisão é sobre **como o preço é derivado**, não sobre quais custos existem. Então as linhas de custo que só o Gestão 3D tem (**manutenção** como % sobre material e energia, **pintura** por peso) devem ser preservadas como itens de custo adicionais — elas não conflitam com o método, só somam. O `customScope` (por pedido ou por peça) do Gestão 3D também é melhor que o equivalente da calculadora e deve ficar.
+
+Cuidado ao unificar: a potência é em **watts** na calculadora e em **kW** no Gestão 3D. Padronizar e converter os valores salvos, ou a conta erra em 1000×.
+
+**2. A hospedagem é a Cloudflare.** O app já foi feito para Workers + D1 + R2, então fica onde está. A recomendação anterior de Next.js + Supabase + Vercel, feita antes de o Gestão 3D aparecer, **está descartada**: migrar de stack jogaria fora um sistema que já funciona. O domínio `fabricando3d.com.br` aponta para a Cloudflare.
+
+**3. Não há mais acesso à hospedagem original, e os dados antigos se perderam.** Consequências: o sistema **nasce vazio**, e **não é preciso escrever rotina de importação** — o que era trabalho previsto e deixou de ser. A empresa estava começando, então a perda é pequena.
+
+Risco em aberto: se o site antigo continuar no ar sem que o dono consiga entrar para removê-lo, ele segue exposto, com os problemas de autenticação descritos acima.
+
 ## O que vamos construir
 
 Um **sistema de gestão** junto com o site público, em **um único projeto com área de login**:
@@ -166,18 +182,13 @@ O dono é **iniciante em programação**, mas **não é iniciante em impressão 
 - Prefira código claro e óbvio a código curto e esperto.
 - Menos peças móveis vence flexibilidade. Cada serviço ou biblioteca a mais é mais uma coisa que ele vai ter que entender sozinho quando quebrar.
 
-## Stack recomendada (decidida por delegação, ainda não implementada)
+## Stack (decidida)
 
-O dono delegou a escolha técnica. A recomendação registrada:
+**Cloudflare Workers + D1 + R2**, que é onde o `gestao-3d/` já roda: Next.js 16, React 19, `vinext`, Drizzle, shadcn/ui, Tailwind 4. Node 22 e pnpm 11.
 
-- **Next.js + TypeScript** — atende site público e área logada no mesmo projeto e no mesmo deploy, que é o formato pedido. TypeScript entra justamente porque o dono é iniciante: o erro aparece na hora de escrever, não com cliente na frente.
-- **Supabase** — Postgres e autenticação prontos, sem servidor próprio para manter. O controle de acesso por linha (RLS) resolve diretamente "cliente vê só o pedido dele".
-- **Vercel** — publica Next.js com domínio próprio no plano grátis, suficiente para este tamanho.
-- **Tailwind CSS** — layout que funciona no celular sem virar CSS impossível de manter.
+A recomendação anterior deste arquivo (Next.js + Supabase + Vercel) foi escrita antes de o Gestão 3D existir no repositório e **não vale mais**. Não a ressuscite.
 
-Nada está instalado. A calculadora já foi vista: é HTML puro, sem build. Isso **não invalida** a escolha acima — o sistema precisa de banco, login e acesso multiusuário, que uma página solta não sustenta. Mas significa que a migração é incremental e que o CSS e a identidade visual existentes se aproveitam quase inteiros.
-
-**Ressalva honesta a manter na mesa:** essa stack tem curva de aprendizado real para quem começa. O caminho em código foi escolhido porque o dono quer o sistema também como portfólio. Se em algum momento a prioridade virar "preciso disso funcionando agora", a troca por uma solução mais simples precisa ser oferecida de novo, não escondida.
+**Ressalva honesta a manter na mesa:** o dono é iniciante e esta stack não é simples — Workers, D1, R2 e um `vinext` ainda em beta. O caminho se justifica porque o sistema já existe e funciona nela. Se em algum momento a prioridade virar "preciso disso funcionando agora", a troca por algo mais simples precisa ser oferecida de novo, não escondida.
 
 ## O que ainda não se sabe — não invente
 
