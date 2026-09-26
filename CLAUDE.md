@@ -120,7 +120,7 @@ Os dados reais **não estão no pacote** — ficaram no D1 da hospedagem de orig
 
 Estas três fecham questões que estavam em aberto. São dele; não as reabra por conta própria.
 
-**1. A fórmula de preço da calculadora é a que vale.** O preço passa a ser **calculado a partir do ROI**, sobrevivendo a imposto, marketplace e ROAS, e não mais digitado à mão como no Gestão 3D. O motor é `precificacao.js`, que já está testado — leve-o para dentro do sistema, não reescreva.
+**1. A fórmula de preço da calculadora é a que vale.** *(motor já implementado em `gestao-3d/lib/precificacao.ts`; falta ligar a tela, que ainda usa o cálculo antigo de `lib/domain.ts`.)* O preço passa a ser **calculado a partir do ROI**, sobrevivendo a imposto, marketplace e ROAS, e não mais digitado à mão como no Gestão 3D. O motor é `precificacao.js`, que já está testado — leve-o para dentro do sistema, não reescreva.
 
 Interpretação aplicada, sujeita a correção dele: a decisão é sobre **como o preço é derivado**, não sobre quais custos existem. Então as linhas de custo que só o Gestão 3D tem (**manutenção** como % sobre material e energia, **pintura** por peso) devem ser preservadas como itens de custo adicionais — elas não conflitam com o método, só somam. O `customScope` (por pedido ou por peça) do Gestão 3D também é melhor que o equivalente da calculadora e deve ficar.
 
@@ -206,7 +206,10 @@ O cliente acessa o sistema. "Cliente vê apenas os próprios pedidos" não é de
 calculadora-3d.html     a calculadora de orçamento, funcionando
 precificacao.js         o motor de preço da calculadora, lógica pura
 teste-precificacao.js   52 testes do motor, sem dependências
-gestao-3d/              o sistema de gestão existente, como veio, sem alteração
+gestao-3d/              o sistema de gestão existente
+  lib/precificacao.ts        o motor de preço UNIFICADO (é este que vale)
+  lib/precificacao.teste.ts  33 testes do motor unificado
+  lib/domain.ts              o cálculo ANTIGO do Gestão 3D, ainda em uso pela tela
 CLAUDE.md               este arquivo
 README.md               só o título
 ```
@@ -226,6 +229,16 @@ pnpm start      # sobe em http://127.0.0.1:8787
 ```
 
 A migração só é necessária na primeira vez; sem ela a API responde 503.
+
+**Rodar os testes do motor unificado** (dentro de `gestao-3d/`):
+
+```
+node --experimental-strip-types lib/precificacao.teste.ts
+```
+
+Sai `33 passaram, 0 falharam`. Verificado. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
+
+**Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 
 **O que ainda não existe:** um sistema único. Hoje são duas peças separadas, com fórmulas de preço que discordam, e a de gestão sem autenticação nenhuma. Nada está publicado, e nada deve ser publicado antes do login existir.
 
