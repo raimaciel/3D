@@ -14,7 +14,7 @@ Algumas coisas só você pode fazer, porque são na sua conta. O resto eu faço.
 |---|---|
 | **Você** | Passos 1 a 4: conta, cartão, bucket, banco, tabelas |
 | **Eu** | Configuro o repositório com o id do seu banco |
-| **Você** | Passos 5 a 8: conectar, publicar, primeiro acesso, domínio |
+| **Você** | Passos 5 a 8: ligar a publicação, publicar, primeiro acesso, domínio |
 
 Faça os passos 1 a 4, me mande o id do banco, e eu te aviso quando puder seguir.
 
@@ -74,35 +74,69 @@ Com o id eu configuro o repositório. Aí você segue do passo 5.
 
 ---
 
-## Passo 5 — Conectar o repositório
+## Passo 5 — Escolher como publicar
 
-No painel, em **Workers & Pages**, crie um Worker a partir do repositório
-`raimaciel/3D` do GitHub. Na configuração:
+Dois jeitos. O primeiro é melhor e foi ideia do dono.
+
+### Jeito 1 — O GitHub publica sozinho (recomendado)
+
+O repositório já tem a automação pronta em `.github/workflows/publicar.yml`.
+A cada mudança na branch `main`, o GitHub roda os testes, compila e publica.
+Se algum teste falhar, **nada vai ao ar**.
+
+Para ligar, faltam dois segredos. Você só faz isso uma vez.
+
+**a) Criar o token na Cloudflare.** No painel, em **My Profile → API Tokens**,
+crie um token com permissão de editar Workers, D1 e R2 na sua conta.
+
+> ⚠️ **Esse token É segredo de verdade** — diferente do id do banco. Ele dá acesso
+> à sua conta. **Não me mande por aqui**, não mande por WhatsApp, não cole em lugar
+> nenhum além do campo indicado abaixo. Se vazar, revogue e crie outro.
+
+**b) Pegar o Account ID.** Aparece no painel da Cloudflare, na visão geral da conta.
+Esse não é segredo, mas trate junto com o token para simplificar.
+
+**c) Guardar os dois no GitHub.** No repositório `raimaciel/3D`, vá em
+**Settings → Secrets and variables → Actions → New repository secret** e crie:
+
+| Nome | Valor |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | o token da letra (a) |
+| `CLOUDFLARE_ACCOUNT_ID` | o id da letra (b) |
+
+**d) Publicar.** Na aba **Actions** do repositório, abra "Publicar na Cloudflare"
+e clique em **Run workflow**. Daí em diante ele roda sozinho a cada mudança.
+
+### Jeito 2 — Pelo painel da Cloudflare
+
+Se preferir, em **Workers & Pages** crie um Worker a partir do repositório
+`raimaciel/3D`, branch `main`, com:
 
 - **Pasta do projeto (root directory):** `gestao-3d`
 - **Comando de instalação:** `pnpm install --frozen-lockfile`
 - **Comando de build:** `pnpm build`
 - **Comando de deploy:** `npx wrangler deploy --config dist/server/wrangler.json`
 
-O projeto traz um arquivo `.node-version` com `22`, para a Cloudflare usar a
-versão de Node que o projeto exige. Se mesmo assim o build reclamar da versão,
-adicione a variável de build `NODE_VERSION=22`.
+Neste caminho não é preciso criar token: a Cloudflare já está autenticada nela mesma.
 
-Não precisa configurar variável de ambiente nenhuma: o nome do Worker, o banco
-`fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e o bucket
-`fabricando3d-arquivos` já estão gravados no projeto.
+---
 
-## Passo 6 — Ligar o banco e os arquivos
+## Passo 6 — O banco e os arquivos (provavelmente nada a fazer)
 
-Nas configurações do Worker, na parte de **Bindings**, adicione dois:
+**Não precisa ligar nada à mão.** O banco `fabricando3d` e o bucket
+`fabricando3d-arquivos` estão declarados na configuração que a publicação envia,
+então o Worker já nasce com eles ligados nos nomes `DB` e `BUCKET`.
 
-| Tipo | Nome do binding | Aponta para |
+Depois de publicar, confira nas configurações do Worker, em **Bindings**, que os
+dois aparecem. Se por algum motivo não aparecerem, aí sim adicione à mão:
+
+| Tipo | Nome | Aponta para |
 |---|---|---|
 | D1 database | `DB` | `fabricando3d` |
 | R2 bucket | `BUCKET` | `fabricando3d-arquivos` |
 
-Os nomes `DB` e `BUCKET` têm que ser **exatamente assim** — é como o código os
-procura.
+Os nomes têm que ser **exatamente** `DB` e `BUCKET`, em maiúsculas — é como o
+código procura por eles.
 
 ## Passo 7 — Publicar, e criar seu acesso NA MESMA HORA
 
