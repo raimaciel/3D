@@ -46,10 +46,19 @@ O cartão é exigido para habilitar o R2, que guarda os STL, 3MF e fotos. **Não
 
 O banco nasce vazio. Isto é feito **uma vez só**.
 
-1. Ainda no banco `fabricando3d`, abra a aba **Console** (pode se chamar "Query").
-2. Abra o arquivo **`drizzle/TUDO-colar-no-painel.sql`** deste repositório,
-   copie o conteúdo **inteiro** e cole no console.
-3. Execute.
+1. Ainda no banco `fabricando3d`, abra a aba **Console**.
+2. Abra o arquivo **`drizzle/COLAR-NO-CONSOLE-D1.sql`** deste repositório,
+   copie a linha **inteira** e cole no campo do console.
+3. Clique em **Execute**.
+
+> **Por que este arquivo e não outro:** o campo do console do D1 é de **uma linha
+> só**. Se você colar um SQL com quebras de linha e comentários, as quebras somem,
+> tudo vira uma linha, e o `--` do primeiro comentário transforma o resto inteiro
+> em comentário — o console responde *"The request is malformed: Requests without
+> any query are not supported"*. O arquivo `COLAR-NO-CONSOLE-D1.sql` já vem numa
+> linha e sem comentário nenhum, justamente para isso.
+>
+> O `TUDO-colar-no-painel.sql`, mais legível, serve para editores de várias linhas.
 
 Para conferir, rode no mesmo console:
 
@@ -74,6 +83,10 @@ No painel, em **Workers & Pages**, crie um Worker a partir do repositório
 - **Comando de instalação:** `pnpm install --frozen-lockfile`
 - **Comando de build:** `pnpm build`
 - **Comando de deploy:** `npx wrangler deploy --config dist/server/wrangler.json`
+
+Não precisa configurar variável de ambiente nenhuma: o nome do Worker, o banco
+`fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e o bucket
+`fabricando3d-arquivos` já estão gravados no projeto.
 
 ## Passo 6 — Ligar o banco e os arquivos
 

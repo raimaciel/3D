@@ -349,7 +349,11 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Não verificado, e não dá para verificar daqui:** a publicação de verdade. Não há conta Cloudflare neste contêiner. O script tem `--simular`, que roda tudo menos o envio.
 
-Duas armadilhas encontradas ao preparar, que valem lembrar:
+**Recursos reais da conta, criados em 26/09/2026 e já gravados no `vite.config.ts`:** Worker `fabricando3d`, banco D1 `fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e bucket R2 `fabricando3d-arquivos`. O id do banco não é segredo — é só um identificador, e ninguém alcança o banco sem estar autenticado na conta. Deixá-lo no repositório poupa o dono de configurar variável de build no painel. O `.env` sobrepõe, para publicar noutro lugar.
+
+Três armadilhas encontradas ao preparar, que valem lembrar:
+
+- **O console do D1 no painel é um campo de UMA LINHA.** Colar um `.sql` com quebras de linha e comentários faz tudo virar uma linha, e o `--` do primeiro comentário comenta o arquivo inteiro: o console responde *"The request is malformed: Requests without any query are not supported"*. Foi o que aconteceu com o dono. Por isso existe `drizzle/COLAR-NO-CONSOLE-D1.sql`, gerado sem comentário e numa linha só, testado exatamente nesse formato.
 
 - **`wrangler whoami` sai com código 0 mesmo sem login** — ele só avisa no texto. Checar o código de saída não detecta nada; o script olha a saída.
 - **`.gitignore` não aceita comentário no fim da linha.** `!.env.exemplo  # nota` vira um padrão literal e a exceção não funciona. O comentário tem que ficar em linha própria.

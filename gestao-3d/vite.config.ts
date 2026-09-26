@@ -4,19 +4,17 @@ import hostingConfig from "./.openai/hosting.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { sites } from "./build/sites-vite-plugin";
 
-const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
-  "00000000-0000-4000-8000-000000000000";
-
 const { d1, r2 } = hostingConfig;
 
-// Para onde isto publica. Em desenvolvimento os valores abaixo bastam: o banco
-// local do wrangler ignora o id. Para publicar na conta da Fabricando 3D,
-// preencha o .env (veja .env.exemplo e PUBLICAR.md) — sem isso o deploy iria
-// para o lugar errado, ou para lugar nenhum.
+// Para onde isto publica: os recursos reais da conta Cloudflare da Fabricando
+// 3D, criados em 26/09/2026. O id do banco NÃO é segredo — é só um
+// identificador, e ninguém alcança o banco sem estar autenticado na conta.
+// Deixá-lo aqui evita ter que configurar variável de build no painel.
+// O .env sobrepõe qualquer um destes, para quem precisar publicar noutro lugar.
 const nomeWorker = process.env.CF_WORKER_NAME || "fabricando3d";
-const nomeBanco = process.env.CF_D1_NOME || "site-creator-d1";
-const idBanco = process.env.CF_D1_ID || SITE_CREATOR_PLACEHOLDER_DATABASE_ID;
-const nomeBucket = process.env.CF_R2_BUCKET || "site-creator-r2";
+const nomeBanco = process.env.CF_D1_NOME || "fabricando3d";
+const idBanco = process.env.CF_D1_ID || "50c8c520-3ebe-447f-8502-10429660a661";
+const nomeBucket = process.env.CF_R2_BUCKET || "fabricando3d-arquivos";
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
