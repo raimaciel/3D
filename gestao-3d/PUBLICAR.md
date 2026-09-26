@@ -84,6 +84,10 @@ No painel, em **Workers & Pages**, crie um Worker a partir do repositório
 - **Comando de build:** `pnpm build`
 - **Comando de deploy:** `npx wrangler deploy --config dist/server/wrangler.json`
 
+O projeto traz um arquivo `.node-version` com `22`, para a Cloudflare usar a
+versão de Node que o projeto exige. Se mesmo assim o build reclamar da versão,
+adicione a variável de build `NODE_VERSION=22`.
+
 Não precisa configurar variável de ambiente nenhuma: o nome do Worker, o banco
 `fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e o bucket
 `fabricando3d-arquivos` já estão gravados no projeto.
