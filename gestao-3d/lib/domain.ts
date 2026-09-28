@@ -58,7 +58,10 @@ export function calculate(c:Calculation){
  });
  const rows=Object.entries(r.itens).filter(([,v])=>v>0) as [string,number][];
  const cost=money(r.custoTotal),revenue=money(r.preco*r.quantidade),profit=money(revenue-cost);
+ // profit é do lote inteiro; unitProfit é o de cada peça. A tela mostra os dois
+ // com rótulo de escopo, porque o dono vende peça avulsa e vende lote.
  return {rows,cost,revenue,profit,
+  quantity:r.quantidade,unitProfit:money(profit/r.quantidade),
   unitCost:r.custoPeca,unitPrice:r.preco,
   margin:revenue?profit/revenue*100:0,
   roiReal:r.roiReal,blocked:r.bloqueado,percFees:r.percTaxas,

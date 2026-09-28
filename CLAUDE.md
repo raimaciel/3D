@@ -80,6 +80,7 @@ Ao ligar a tela, apareceram diferenças de convenção entre os dois sistemas. F
 | Preparo | uma vez | Campo novo. |
 | Personalização | escopo escolhido | Mantido do Gestão 3D, que nisso era melhor. |
 | Preço | **calculado** | O campo de digitar preço não existe mais. |
+| Lucro | **por peça e do lote**, os dois | O dono vende peça avulsa e lote. O rótulo antigo, "Lucro estimado", mostrava o lucro do lote ao lado do preço por peça, e o lucro parecia maior que o preço. Agora aparece "Lucro por peça" sempre e "Lucro do lote (N peças)" quando a quantidade passa de 1. |
 
 ### Onde a migração está
 
