@@ -92,7 +92,7 @@ O plano era extrair o motor de preço, provar com teste que nada quebrou, e só 
 
 Verificado em Chromium, em 1400 px e em 390 px: a tela carrega sem erro de JavaScript, os números batem com o motor, e o escopo dos campos se comporta como o rótulo promete — num lote de 20, o acabamento multiplicou por 20 e o preparo ficou parado.
 
-**O login está feito.** Falta a hospedagem.
+**O login está feito, e o sistema está no ar** em `https://3d.ranbm3.workers.dev` (veja "Publicação"). Falta apontar o domínio.
 
 ## O OUTRO ponto de partida: o Gestão 3D (JÁ NO REPOSITÓRIO, em `gestao-3d/`)
 
@@ -294,7 +294,7 @@ gestao-3d/              o sistema de gestão
   lib/precificacao.ts        o motor de preço unificado (é este que vale)
   lib/precificacao.teste.ts  33 testes do motor
   lib/auth.ts                senha e token de sessão
-  lib/auth.teste.ts          36 testes de autenticação
+  lib/auth.teste.ts          37 testes de autenticação
   lib/sessao.ts              sessão no banco e guardas das rotas
   lib/limite.ts              trava de força bruta
   lib/arquivos.ts            o que entra: STL, 3MF e imagens, por assinatura
@@ -309,17 +309,19 @@ README.md               só o título
 
 **Rodar os testes da calculadora:** `node teste-precificacao.js` → `52 passaram, 0 falharam`. Verificado.
 
-**Rodar o Gestão 3D** (dentro de `gestao-3d/`, com Node 22 e pnpm 11) — todos verificados neste contêiner:
+**Rodar o Gestão 3D** (dentro de `gestao-3d/`, com Node 22 e pnpm 11) — todos verificados no contêiner e no Windows do dono:
 
 ```
 pnpm install --frozen-lockfile
 pnpm build
-npx wrangler d1 execute site-creator-d1 --config dist/server/wrangler.json \
+npx wrangler d1 execute DB --config dist/server/wrangler.json \
   --local --persist-to .wrangler/state --file drizzle/0000_small_solo.sql
+npx wrangler d1 execute DB --config dist/server/wrangler.json \
+  --local --persist-to .wrangler/state --file drizzle/0001_login.sql
 pnpm start      # sobe em http://127.0.0.1:8787
 ```
 
-As migrações só são necessárias na primeira vez; sem elas a API responde 503. **São duas**: a segunda cria as tabelas de login.
+As migrações só são necessárias na primeira vez; sem elas a API responde 503. **São duas**: a segunda cria as tabelas de login. O banco é chamado pelo nome do vínculo, `DB`, e não pelo nome do banco: o nome mudou de `site-creator-d1` para `fabricando3d` quando o projeto foi apontado para a conta real, e o comando antigo parou de funcionar por isso.
 
 **Rodar os testes do motor unificado** (dentro de `gestao-3d/`):
 
@@ -333,7 +335,7 @@ Sai `33 passaram, 0 falharam`. E os da autenticação:
 node --experimental-strip-types lib/auth.teste.ts
 ```
 
-Sai `36 passaram, 0 falharam`. E os de arquivo:
+Sai `37 passaram, 0 falharam`. E os de arquivo:
 
 ```
 node --experimental-strip-types lib/arquivos.teste.ts
@@ -343,9 +345,20 @@ Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.s
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 
-**O que ainda não existe:** um sistema único. Hoje são duas peças separadas, com fórmulas de preço que discordam, e a de gestão sem autenticação nenhuma. Nada está publicado, e nada deve ser publicado antes do login existir.
+**O que ainda não existe:** o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
 
-## Publicação (preparada, ainda não feita)
+## No computador do dono (Windows)
+
+Desde 28/09/2026 o trabalho acontece no computador do dono, em `C:\ProjetosDev\3D\Fabricando3D`, pelo aplicativo Claude para Windows, e não mais na nuvem.
+
+- A pasta veio de um ZIP do GitHub e foi ligada ao repositório depois (`git init` + `origin` = `github.com/raimaciel/3D`). Estava idêntica ao commit `c50be42`.
+- **Node 26 e pnpm 10 servem.** O pnpm 10 baixa sozinho o pnpm 11.25 que o `package.json` pede. Tudo passa com eles: os quatro conjuntos de testes, o build e o servidor local.
+- **Defeito do wrangler no Windows:** um POST com corpo que o sistema recusa **sem ler** o corpo recebe, uma vez sim e outra não, 503 *"Your worker restarted mid-request"*. A mensagem vem da camada que só existe no servidor local, e acontece igual com Node 22. Medido: 6 de 12 nesses casos; 0 de 12 em POST sem corpo ou com corpo lido. Não "conserte" isso fazendo o sistema ler o corpo de quem não entrou: seria piorar o código que vai ao ar por causa de uma ferramenta local. `scripts/teste-acesso.sh` repete a requisição só quando vê essa mensagem exata.
+- `.claude/launch.json` sobe o servidor local pelo painel de navegador do aplicativo.
+- O Git para Windows vem com `core.autocrlf = true` e converteria os `.sh` para CRLF ao baixar, o que quebra o bash. O `.gitattributes` da raiz fixa os `.sh` em LF.
+- **Para enviar ao GitHub** (e assim publicar), o dono precisa entrar na conta do GitHub neste computador na primeira vez que for enviar. O `gh` não está logado.
+
+## Publicação (no ar)
 
 `gestao-3d/PUBLICAR.md` é o passo a passo para o dono, com os dois caminhos: pelo painel da Cloudflare, sem terminal, ou pelo terminal com `scripts/publicar.sh`.
 
@@ -353,9 +366,17 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Verificado:** o build gera a configuração certa com e sem `.env`, e `wrangler deploy --dry-run` valida o Worker com os bindings `DB` e `BUCKET` apontando para os nomes da Fabricando 3D. O pacote dá 318 KB comprimido.
 
-**Não verificado, e não dá para verificar daqui:** a publicação de verdade. Não há conta Cloudflare neste contêiner. O script tem `--simular`, que roda tudo menos o envio.
+**No ar, verificado em 28/09/2026:** `https://3d.ranbm3.workers.dev` responde, e `scripts/teste-acesso.sh` contra ele dá `9 passaram, 0 falharam`: a API recusa quem não entrou. `/api/auth/me` devolve `precisaConfigurar: false`, ou seja, **o primeiro acesso já foi criado** — pelo próprio dono, numa sessão anterior do Claude (confirmado por ele). A publicação é feita pela integração da Cloudflare com o GitHub (Workers Builds, Root directory `gestao-3d`) a cada envio para a `main`.
 
-**Recursos reais da conta, criados em 26/09/2026 e já gravados no `vite.config.ts`:** Worker `fabricando3d`, banco D1 `fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e bucket R2 `fabricando3d-arquivos`. O id do banco não é segredo — é só um identificador, e ninguém alcança o banco sem estar autenticado na conta. Deixá-lo no repositório poupa o dono de configurar variável de build no painel. O `.env` sobrepõe, para publicar noutro lugar.
+**Os testes rodam dentro de `pnpm build`** (decisão do dono, 28/09/2026). O script `build` do `package.json` chama `pnpm test` antes de construir, então o Workers Builds, que é quem publica de fato, **não publica se um teste falhar**. Verificado: com um teste quebrado de propósito, a construção para com erro. Antes disso o Workers Builds não rodava teste nenhum.
+
+**Pendente, esperando o dono autorizar:** apagar `.github/workflows/publicar.yml`. Ele falhou nas seis execuções que teve, na etapa `pnpm/action-setup` (*"No pnpm version is specified"*: procura o `package.json` na raiz, e o projeto está em `gestao-3d/`). O dono escolheu ficar só com o caminho da Cloudflare, mas a remoção foi barrada pelo controle de permissões desta sessão e precisa de autorização explícita dele. Enquanto ficar, ele só gera um "falhou" no GitHub a cada envio, sem efeito no site.
+
+**Armadilha no Windows:** `pnpm build` falha com `EPERM ... dist` se o servidor local (`pnpm start`) estiver rodando, porque ele segura os arquivos da pasta `dist`. Desligue o servidor antes de construir.
+
+**Falta:** o domínio. `fabricando3d.com.br` não tem endereço no DNS (em 28/09/2026 o `nslookup` não devolve nenhum IP).
+
+**Recursos reais da conta, criados em 26/09/2026 e já gravados no `vite.config.ts`:** Worker `3d`, banco D1 `fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e bucket R2 `fabricando3d-arquivos`. O id do banco não é segredo — é só um identificador, e ninguém alcança o banco sem estar autenticado na conta. Deixá-lo no repositório poupa o dono de configurar variável de build no painel. O `.env` sobrepõe, para publicar noutro lugar.
 
 Três armadilhas encontradas ao preparar, que valem lembrar:
 

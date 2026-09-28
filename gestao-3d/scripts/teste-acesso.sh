@@ -10,9 +10,19 @@ BASE="${1:-http://127.0.0.1:8787}"
 TMP=$(mktemp); trap 'rm -f "$TMP"' EXIT
 ok=0; falhou=0
 
+# O servidor local da Cloudflare (wrangler dev), no Windows, responde 503
+# "Your worker restarted mid-request" em uma de cada duas requisições POST cujo
+# corpo o sistema recusa sem ler. É defeito do wrangler, não do sistema: a
+# mensagem vem de uma camada que só existe no servidor local, e acontece igual
+# com Node 22 e com Node 26. A própria mensagem pede para repetir, então só
+# nesse caso exato o teste repete, e no máximo duas vezes.
 testa() { # nome, código esperado, curl args...
   local nome="$1" esperado="$2"; shift 2
-  local codigo; codigo=$(curl -s -o "$TMP" -w '%{http_code}' --max-time 20 "$@")
+  local codigo tentativa
+  for tentativa in 1 2 3; do
+    codigo=$(curl -s -o "$TMP" -w '%{http_code}' --max-time 20 "$@")
+    [ "$codigo" = 503 ] && grep -q 'restarted mid-request' "$TMP" || break
+  done
   if [ "$codigo" = "$esperado" ]; then ok=$((ok+1)); printf '  ok    %-52s %s\n' "$nome" "$codigo"
   else falhou=$((falhou+1)); printf '  FALHA %-52s esperado %s, veio %s\n' "$nome" "$esperado" "$codigo"; fi
 }

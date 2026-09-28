@@ -1,0 +1,4 @@
+# O Git para Windows converte quebra de linha para CRLF ao baixar arquivos.
+# Script de bash com CRLF quebra ("$'\r': command not found"), no Windows e na
+# construção da Cloudflare, que roda em Linux. Scripts ficam sempre em LF.
+*.sh text eol=lf
