@@ -82,6 +82,22 @@ Ao ligar a tela, apareceram diferenças de convenção entre os dois sistemas. F
 | Preço | **calculado** | O campo de digitar preço não existe mais. |
 | Lucro | **por peça e do lote**, os dois | O dono vende peça avulsa e lote. O rótulo antigo, "Lucro estimado", mostrava o lucro do lote ao lado do preço por peça, e o lucro parecia maior que o preço. Agora aparece "Lucro por peça" sempre e "Lucro do lote (N peças)" quando a quantidade passa de 1. |
 
+### Melhorias da precificação (28/09/2026)
+
+O dono pediu para comparar com quatro calculadoras do mercado (STLFLIX, Objeto3D, Calc3D, 3D Print Studio) e melhorar a nossa **sem ficar perguntando**. Na fórmula, a nossa já era a mais correta das cinco: só ela aplica a margem por fora das taxas. O que entrou:
+
+- **Exemplos prontos** (chaveiro, lote de chaveiros, peça técnica, miniatura, decoração): preenchem peso, tempo, quantidade e acabamento típicos da A1. São ponto de partida, e a tela diz isso. Os números estão em `PONTOS_DE_PARTIDA`, em `app/precificacao-extras.tsx`.
+- **Ler peso e tempo do fatiador**: lê o `.gcode.3mf` do Bambu Studio (o arquivo `Metadata/slice_info.config` de dentro do ZIP) ou um `.gcode` do Bambu, Orca, Prusa ou Cura. É lido **no navegador, sem enviar**. O fatiador dá o total da **mesa**; a tela divide pelo número de peças da mesa e mostra a conta que fez. **Ainda não foi testado com um arquivo real da A1 do dono**: os testes usam arquivos montados no formato documentado. O Cura não informa peso em gramas, e a tela avisa em vez de inventar.
+- **"O cliente pediu outro preço?"**: digita-se um preço, e a tela mostra lucro, ROI e se está abaixo do preço mínimo. Não mexe no preço calculado. Motor: `analisarPreco()`.
+- **Preço mínimo** (ROI zero) e **lucro por hora de impressora**, no painel do preço. Com uma A1 só, o tempo de máquina é o gargalo.
+- **Custo fixo do mês** (DAS do MEI, internet, assinaturas) ÷ peças feitas por mês, como linha de custo nova. O padrão fica em Configurações. **Começa em zero**, então nenhum preço existente mudou.
+
+Decisões tomadas por mim, sem consultar, que o dono pode reverter:
+- **O custo fixo fica fora da margem de falha**, porque a conta do mês não cresce quando uma peça falha. Mesma lógica da embalagem.
+- **Correção de defeito antigo:** o "lucro" da tela era receita menos custo, **sem descontar** imposto, marketplace, anúncio e taxa fixa. Com taxas acima de zero, a tela mostrava lucro maior que o real. Agora vem do motor, já descontado. Os orçamentos salvos não mudam: eles guardam custo e receita, que estavam certos.
+
+Ficaram de fora, porque mudariam preços que já existem ou dependem de como ele vende: embalagem e frete **sem margem** (o Objeto3D faz assim; aqui a embalagem recebe o ROI), e **preço de lojista** (STLFLIX).
+
 ### Onde a migração está
 
 O plano era extrair o motor de preço, provar com teste que nada quebrou, e só então construir o sistema em volta. **Os dois primeiros passos estão feitos:**
@@ -293,13 +309,16 @@ precificacao.js         o motor de preço da calculadora, lógica pura
 teste-precificacao.js   52 testes do motor, sem dependências
 gestao-3d/              o sistema de gestão
   lib/precificacao.ts        o motor de preço unificado (é este que vale)
-  lib/precificacao.teste.ts  33 testes do motor
+  lib/precificacao.teste.ts  49 testes do motor
   lib/auth.ts                senha e token de sessão
   lib/auth.teste.ts          37 testes de autenticação
   lib/sessao.ts              sessão no banco e guardas das rotas
   lib/limite.ts              trava de força bruta
   lib/arquivos.ts            o que entra: STL, 3MF e imagens, por assinatura
   lib/arquivos.teste.ts      35 testes de validação de arquivo
+  lib/fatiador.ts            lê peso e tempo do .gcode.3mf / .gcode
+  lib/fatiador.teste.ts      24 testes da leitura do fatiador
+  app/precificacao-extras.tsx  exemplos prontos, leitura do fatiador, "outro preço"
   app/acesso.tsx             tela de entrada e de primeiro acesso
   scripts/teste-acesso.sh    prova que a API está fechada
 CLAUDE.md               este arquivo
@@ -330,7 +349,7 @@ As migrações só são necessárias na primeira vez; sem elas a API responde 50
 node --experimental-strip-types lib/precificacao.teste.ts
 ```
 
-Sai `33 passaram, 0 falharam`. E os da autenticação:
+Sai `49 passaram, 0 falharam`. E os da autenticação:
 
 ```
 node --experimental-strip-types lib/auth.teste.ts
@@ -343,6 +362,8 @@ node --experimental-strip-types lib/arquivos.teste.ts
 ```
 
 Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
+
+E os da leitura do fatiador: `node --experimental-strip-types lib/fatiador.teste.ts` → `24 passaram, 0 falharam`. **`pnpm test` roda os quatro conjuntos**, e `pnpm build` chama `pnpm test` antes de construir.
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 

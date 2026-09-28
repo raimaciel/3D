@@ -59,6 +59,11 @@ export type EntradaPreco = {
   embalagem: number;     // R$ por peça
   falha: number;         // %
 
+  // Custo fixo do mês (DAS do MEI, internet, assinaturas, aluguel): existe
+  // mesmo sem imprimir, então cada peça feita no mês paga a sua parte.
+  custoFixoMes: number;  // R$ por mês
+  pecasMes: number;      // peças feitas por mês
+
   // Venda
   imposto: number;       // %
   marketplace: number;   // %
@@ -79,6 +84,10 @@ export type SaidaPreco = {
   roiReal: number;
   bloqueado: boolean;
   percTaxas: number;
+  /** Abaixo deste preço por peça, a venda dá prejuízo (ROI zero). */
+  precoMinimo: number;
+  /** Lucro do trabalho inteiro dividido pelas horas de impressora que ele ocupa. */
+  lucroPorHora: number;
 };
 
 const n = (v: unknown): number => {
@@ -93,7 +102,7 @@ export const entradaVazia = (): EntradaPreco => ({
   modelagemHoras: 0, modelagemHora: 0,
   personalizacaoMin: 0, personalizacaoHora: 0, personalizacaoEscopo: 'pedido',
   acabamentoMin: 0, preparoMin: 0, maoHora: 0,
-  embalagem: 0, falha: 0,
+  embalagem: 0, falha: 0, custoFixoMes: 0, pecasMes: 0,
   imposto: 0, marketplace: 0, taxaFixa: 0, roas: 0, roi: 0
 });
 
@@ -119,6 +128,7 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
                 + n(e.acabamentoFixo) * qtd;
   const acabamento = n(e.acabamentoMin) * qtd / 60 * n(e.maoHora);
   const embalagem = n(e.embalagem) * qtd;
+  const custoFixo = n(e.pecasMes) > 0 ? n(e.custoFixoMes) / n(e.pecasMes) * qtd : 0;
 
   // Uma vez no trabalho / no pedido
   const preparo = n(e.preparoMin) / 60 * n(e.maoHora);
@@ -130,6 +140,7 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
   // Inclui preparo e acabamento, porque o trabalho é refeito.
   // Exclui modelagem, porque o arquivo CAD continua valendo.
   // Exclui embalagem, porque a peça perdida nunca chegou a ser embalada.
+  // Exclui custo fixo, porque a conta do mês não cresce quando uma peça falha.
   const falhas = (filamento + energia + maquina + manutencao + pintura
                   + preparo + acabamento) * n(e.falha) / 100;
 
@@ -137,7 +148,8 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
     Filamento: filamento, Energia: energia, 'Máquina': maquina,
     'Manutenção': manutencao, Pintura: pintura, Modelagem: modelagem,
     'Personalização': personalizacao, Preparo: preparo,
-    Acabamento: acabamento, Embalagem: embalagem, Falhas: falhas
+    Acabamento: acabamento, Embalagem: embalagem, 'Custo fixo': custoFixo,
+    Falhas: falhas
   };
 
   const custoTotal = Object.values(itens).reduce((a, b) => a + b, 0);
@@ -167,10 +179,52 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
   const totalDescontos = Object.values(descontos).reduce((a, b) => a + b, 0);
   const lucroPeca = preco - custoPeca - totalDescontos;
 
+  // Preço de ROI zero: paga o custo, as taxas e a taxa fixa, e não sobra nada.
+  const precoMinimo = bloqueado ? 0 : (custoPeca + fixaPorPeca) / (1 - percTaxas);
+  const horas = n(e.horas);
+
   return {
     quantidade: qtd, itens, custoTotal, custoPeca, preco,
     descontos, totalDescontos, lucroPeca,
     roiReal: custoPeca > 0 ? lucroPeca / custoPeca * 100 : 0,
-    bloqueado, percTaxas
+    bloqueado, percTaxas, precoMinimo,
+    lucroPorHora: horas > 0 ? lucroPeca * qtd / horas : 0
+  };
+}
+
+export type AnalisePreco = {
+  preco: number;
+  descontos: Record<string, number>;
+  lucroPeca: number;
+  lucroTotal: number;
+  roiReal: number;
+  /** Quanto este preço fica abaixo (negativo) ou acima do calculado. */
+  diferenca: number;
+};
+
+/**
+ * O caminho de volta: o cliente pediu outro preço ("faz por R$ 25?").
+ * Não muda o preço calculado; só diz quanto sobra se aceitar aquele valor,
+ * descontando as mesmas taxas que o cálculo normal desconta.
+ */
+export function analisarPreco(entrada: Partial<EntradaPreco>, precoOferecido: number): AnalisePreco {
+  const r = calcularPreco(entrada);
+  const preco = Math.max(0, n(precoOferecido));
+  const e = { ...entradaVazia(), ...entrada };
+  const imposto = n(e.imposto) / 100;
+  const marketplace = n(e.marketplace) / 100;
+  const anuncios = n(e.roas) > 0 ? 1 / n(e.roas) : 0;
+  const descontos: Record<string, number> = {
+    Imposto: preco * imposto,
+    Marketplace: preco * marketplace,
+    'Taxa fixa': n(e.taxaFixa) / r.quantidade,
+    'Anúncios': preco * anuncios
+  };
+  const lucroPeca = preco - r.custoPeca - Object.values(descontos).reduce((a, b) => a + b, 0);
+  return {
+    preco, descontos, lucroPeca,
+    lucroTotal: lucroPeca * r.quantidade,
+    roiReal: r.custoPeca > 0 ? lucroPeca / r.custoPeca * 100 : 0,
+    diferenca: preco - r.preco
   };
 }

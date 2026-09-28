@@ -7,7 +7,7 @@
  * motor da calculadora (../precificacao.js), que já estava em uso e testado.
  * Se essa equivalência quebrar, o preço mudou sem ninguém pedir.
  */
-import { calcularPreco, taxaHoraMaquina, type EntradaPreco } from './precificacao.ts';
+import { calcularPreco, analisarPreco, taxaHoraMaquina, type EntradaPreco } from './precificacao.ts';
 import { createRequire } from 'node:module';
 const { calcularPrecificacao } = createRequire(import.meta.url)('../../precificacao.js');
 
@@ -137,6 +137,52 @@ titulo('9. Travas e entradas inválidas');
   ok('valores inválidos viram zero', !Number.isNaN(s.preco) && !Number.isNaN(s.custoPeca));
   ok('quantidade 0 no lote não divide por zero',
      Number.isFinite(calcularPreco({ ...base, lote: true, quantidade: 0 }).custoPeca));
+}
+
+titulo('10. Custo fixo do mês');
+{
+  const sem = calcularPreco({ ...base });
+  const zerado = calcularPreco({ ...base, custoFixoMes: 300, pecasMes: 0 });
+  ok('sem peças por mês informadas, o custo fixo não entra', quase(zerado.preco, sem.preco));
+  const com = calcularPreco({ ...base, custoFixoMes: 300, pecasMes: 100 });
+  ok('R$ 300 no mês ÷ 100 peças = R$ 3 por peça', quase(com.itens['Custo fixo'], 3), brl(com.itens['Custo fixo']));
+  const lote = calcularPreco({ ...base, lote: true, quantidade: 10, peso: 500, horas: 35,
+    custoFixoMes: 300, pecasMes: 100 });
+  ok('num lote de 10, cada peça paga a sua parte: R$ 30', quase(lote.itens['Custo fixo'], 30));
+  const comFalha = calcularPreco({ ...base, falha: 10, custoFixoMes: 300, pecasMes: 100 });
+  const semFalha = calcularPreco({ ...base, falha: 10 });
+  ok('a margem de falha não cobre o custo fixo',
+     quase(comFalha.itens.Falhas, semFalha.itens.Falhas));
+  ok('com custo fixo, o ROI pedido continua exato', quase(com.roiReal, 250, 1e-6), com.roiReal.toFixed(6));
+}
+
+titulo('11. Preço mínimo e lucro por hora');
+{
+  const r = calcularPreco({ ...base, marketplace: 16, taxaFixa: 6 });
+  const noMinimo = analisarPreco({ ...base, marketplace: 16, taxaFixa: 6 }, r.precoMinimo);
+  ok('vender no preço mínimo dá lucro zero', quase(noMinimo.lucroPeca, 0, 1e-9), brl(noMinimo.lucroPeca));
+  ok('o preço mínimo fica abaixo do calculado', r.precoMinimo < r.preco);
+  const lote = calcularPreco({ ...base, lote: true, quantidade: 4, peso: 200, horas: 14 });
+  ok('lucro por hora = lucro do lote ÷ horas de impressora',
+     quase(lote.lucroPorHora, lote.lucroPeca * 4 / 14), brl(lote.lucroPorHora));
+  ok('sem horas, lucro por hora é zero e não divide por zero',
+     calcularPreco({ ...base, horas: 0 }).lucroPorHora === 0);
+}
+
+titulo('12. Cliente pediu outro preço');
+{
+  const ent = { ...base, imposto: 6, marketplace: 16, roas: 5, taxaFixa: 6 };
+  const r = calcularPreco(ent);
+  const mesmo = analisarPreco(ent, r.preco);
+  ok('no preço calculado, a análise devolve o mesmo lucro', quase(mesmo.lucroPeca, r.lucroPeca, 1e-9));
+  ok('no preço calculado, a diferença é zero', quase(mesmo.diferenca, 0, 1e-9));
+  const desconto = analisarPreco(ent, r.preco * 0.8);
+  ok('com 20% de desconto, o lucro cai', desconto.lucroPeca < r.lucroPeca);
+  ok('as taxas percentuais caem junto com o preço',
+     quase(desconto.descontos.Marketplace, r.preco * 0.8 * 0.16, 1e-9));
+  ok('a taxa fixa não cai com o desconto', quase(desconto.descontos['Taxa fixa'], 6));
+  ok('preço baixo demais mostra prejuízo', analisarPreco(ent, 1).lucroPeca < 0);
+  ok('preço inválido vira zero, sem NaN', !Number.isNaN(analisarPreco(ent, 'x' as never).lucroPeca));
 }
 
 console.log('\n' + '='.repeat(56));

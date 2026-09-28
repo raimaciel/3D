@@ -153,3 +153,28 @@ body {
 .anexos-linha{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:4px}
 .anexos-linha a{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#0a7183;text-decoration:none;overflow-wrap:anywhere}
 .anexos-linha a:hover{text-decoration:underline}
+
+/* Precificação: pontos de partida, leitura do fatiador e "outro preço" (app/precificacao-extras.tsx) */
+.pontos-partida{margin-bottom:20px}
+.pontos-titulo{display:block;font-size:12px;font-weight:600;color:#5b778b;margin-bottom:9px}
+.pontos-lista{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.pontos-lista button{flex:0 0 auto;border:1px solid #d6e0e9;border-radius:8px;padding:9px 12px;text-align:left;background:#f7fafc;color:#537187;transition:.15s}
+.pontos-lista button:hover{border-color:#0a98a8;background:#eef7f9}
+.pontos-lista b{display:block;font-size:13px;font-weight:600;color:#2d4c63}
+.pontos-lista small{display:block;font-size:11px;color:#7d91a2;margin-top:2px;white-space:nowrap}
+.pontos-partida .hint,.ler-fatiador .hint,.outro-preco .hint{display:block;font-size:12px;line-height:1.5;color:#7d91a2;margin-top:8px}
+.ler-fatiador{border-top:1px solid #edf2f6;margin-top:18px;padding-top:15px}
+.ler-fatiador .file-chip{margin-left:0;display:inline-flex;align-items:center;gap:7px}
+.ler-fatiador .inline-note{margin-top:10px}
+.result-extra{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;padding:15px 0;border-bottom:1px solid #315166}
+.result-extra span{display:block;font-size:11px;color:#a8c0cf;margin-bottom:5px}
+.result-extra b{font-size:16px;color:#e8f1f6;font-weight:600;font-variant-numeric:tabular-nums}
+.result-extra small{display:block;font-size:11px;color:#86a5bd;margin-top:3px}
+.outro-preco{background:white;border:1px solid #dfe7ee;border-radius:12px;padding:20px;margin-top:16px}
+.outro-preco>b{font-size:15px;color:#203e56}
+.outro-preco>p{font-size:12px;color:#7d91a2;margin:4px 0 14px;line-height:1.5}
+.outro-preco-resultado{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:10px;margin-top:14px}
+.outro-preco-resultado span{display:block;font-size:11px;color:#71879b;margin-bottom:4px}
+.outro-preco-resultado b{font-size:17px;color:#1d6f63;font-weight:600;font-variant-numeric:tabular-nums}
+.outro-preco-resultado>p{grid-column:1/-1;margin:0}
+.outro-preco-resultado .inline-note{margin-top:4px;background:#fff0ee;color:#a0423b}
