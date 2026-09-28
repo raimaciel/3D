@@ -1,12 +1,14 @@
 import { z } from 'zod';
-import { calcularPreco, analisarPreco } from './precificacao.ts';
 export const money=(n:number)=>Math.round((n+Number.EPSILON)*100)/100;
 const num=z.number().finite().min(0).max(10000000);
 const name=z.string().trim().min(1,'Preencha o nome.').max(200);
 const txt=z.string().max(2000).default('');
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v+'T12:00:00Z')),'Data inválida');
-// Campos do orcamento. O nome de cada um diz o ESCOPO de proposito: confundir
-// "por peca" com "uma vez" foi a origem de um erro de 20x na calculadora antiga.
+// Formato dos itens JA SALVOS nos orcamentos e pedidos. A Precificacao que
+// preenchia estes campos foi apagada em 28/09/2026 para ser refeita; o formato
+// fica porque Orcamentos, Pedidos e Producao ainda leem os itens salvos.
+// O nome de cada campo diz o ESCOPO de proposito: confundir "por peca" com
+// "uma vez" foi a origem de um erro de 20x na calculadora antiga.
 //   weight / hours  -> POR PECA (o produto cadastrado guarda assim)
 //   power           -> WATTS (era kW antes; a etiqueta da impressora vem em W)
 //   nao existe mais "price": o preco agora e CALCULADO a partir do ROI.
@@ -20,10 +22,7 @@ export const calculationSchema=z.object({
   customScope:z.enum(['pedido','peca']),
   finishMinutes:num,setupMinutes:num,laborRate:num,
   packaging:num,loss:num.max(100),
-  tax:num.max(100),marketplace:num.max(100),fixedFee:num,roas:num,roi:num,
-  // Custo fixo do mes rateado nas pecas. Com default: orcamento salvo antes
-  // destes campos existirem continua valido, e com custo fixo zero.
-  fixedMonthly:num.default(0),piecesMonth:num.default(0)
+  tax:num.max(100),marketplace:num.max(100),fixedFee:num,roas:num,roi:num
 });
 export type Calculation=z.infer<typeof calculationSchema>;
 
@@ -33,62 +32,6 @@ export const arquivoSchema=z.object({
   nome:z.string().trim().min(1).max(200)
 });
 export type Arquivo=z.infer<typeof arquivoSchema>;
-export const defaults:Calculation={
-  quantity:1,weight:115,hours:6.3,kgPrice:100,
-  machineRate:0,power:150,energyRate:1.1,maintenance:1,
-  paint:false,paintRate:2,finish:0,
-  modelingHours:0,modelingRate:0,
-  custom:false,customDescription:'',customMinutes:0,customRate:0,customScope:'pedido',
-  finishMinutes:0,setupMinutes:0,laborRate:0,
-  packaging:2,loss:0,
-  tax:0,marketplace:0,fixedFee:0,roas:0,roi:250,
-  fixedMonthly:0,piecesMonth:0
-};
-// A tela pede peso e tempo POR PECA; o motor trabalha com o total do trabalho.
-// A conversao mora aqui, num lugar so, para nao se repetir nem divergir.
-function entradaDoMotor(c:Calculation){
- return {
-  quantidade:c.quantity,lote:c.quantity>1,
-  peso:c.weight*c.quantity,horas:c.hours*c.quantity,precoKg:c.kgPrice,
-  potencia:c.power,tarifaKwh:c.energyRate,taxaMaquina:c.machineRate,
-  manutencao:c.maintenance,
-  pintura:c.paint,taxaPintura:c.paintRate,acabamentoFixo:c.finish,
-  modelagemHoras:c.modelingHours,modelagemHora:c.modelingRate,
-  personalizacaoMin:c.custom?c.customMinutes:0,personalizacaoHora:c.customRate,
-  personalizacaoEscopo:c.customScope,
-  acabamentoMin:c.finishMinutes,preparoMin:c.setupMinutes,maoHora:c.laborRate,
-  embalagem:c.packaging,falha:c.loss,
-  imposto:c.tax,marketplace:c.marketplace,taxaFixa:c.fixedFee,roas:c.roas,roi:c.roi,
-  // "|| 0": orcamento salvo antes destes campos existirem nao os tem.
-  custoFixoMes:c.fixedMonthly||0,pecasMes:c.piecesMonth||0
- };
-}
-export function calculate(c:Calculation){
- const r=calcularPreco(entradaDoMotor(c));
- const rows=Object.entries(r.itens).filter(([,v])=>v>0) as [string,number][];
- const cost=money(r.custoTotal),revenue=money(r.preco*r.quantidade);
- // Lucro DEPOIS de imposto, marketplace, anuncios e taxa fixa, como o motor
- // calcula. (Antes era receita menos custo, sem as taxas: com imposto ou
- // marketplace, a tela mostrava um lucro maior que o de verdade.)
- // profit e do lote inteiro; unitProfit e o de cada peca. A tela mostra os dois
- // com rotulo de escopo, porque o dono vende peca avulsa e vende lote.
- const profit=money(r.lucroPeca*r.quantidade);
- return {rows,cost,revenue,profit,
-  quantity:r.quantidade,unitProfit:money(r.lucroPeca),
-  unitCost:r.custoPeca,unitPrice:r.preco,
-  minPrice:r.precoMinimo,profitPerHour:money(r.lucroPorHora),
-  hours:c.hours*c.quantity,
-  margin:revenue?profit/revenue*100:0,
-  roiReal:r.roiReal,blocked:r.bloqueado,percFees:r.percTaxas,
-  discounts:Object.entries(r.descontos).filter(([,v])=>v>0) as [string,number][],
-  // Material que sai do estoque de fato, ja contando a perda esperada.
-  grams:c.weight*c.quantity*(1+c.loss/100)};
-}
-/** "O cliente pediu outro preço": quanto sobra se vender por `price` cada peça. */
-export function analyzeOffer(c:Calculation,price:number){
- const a=analisarPreco(entradaDoMotor(c),price);
- return {unitProfit:money(a.lucroPeca),profit:money(a.lucroTotal),roiReal:a.roiReal,difference:money(a.diferenca)};
-}
 export function safeSupplierLink(value:unknown):string{if(typeof value!=='string'||!value.trim())return '';try{const u=new URL(value.trim());return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:''}catch{return ''}}
 const supplierLink=z.string().trim().max(2000).default('').refine(v=>v===''||!!safeSupplierLink(v),'Informe um link completo começando com https:// ou http://.');
 export const entitySchemas={customers:z.object({name,phone:txt,email:z.string().max(200).default(''),notes:txt}),suppliers:z.object({name,phone:txt,notes:txt,supplierType:z.enum(['','online','fisico']).default(''),platform:z.string().trim().max(100).default(''),link:supplierLink,address:txt}),materials:z.object({name,brand:z.string().trim().max(200).default(''),model:z.string().trim().max(200).default(''),type:name,color:name,kgPrice:num,minimum:num,spoolCount:z.number().int().finite().min(0).max(100000).default(0),spoolWeight:num.default(0),spoolPrice:num.default(0),supplierId:z.string().default(''),paymentType:z.enum(['avista','parcelado']).default('avista'),installments:z.number().int().finite().min(1).max(120).default(1),notes:txt}),printers:z.object({name,model:z.string().trim().max(200).default(''),brand:z.string().trim().max(200).default(''),machineRate:num,power:num,notes:txt}),products:z.object({name,category:name,model:z.string().trim().max(200).default(''),color:z.string().trim().max(100).default(''),description:txt,weight:num,hours:num,photo:txt})};
@@ -97,8 +40,8 @@ export type Entity={id:string;[key:string]:any};
 export type Item={id:string;name:string;category:string;materialId:string;printerId:string;calculation:Calculation;arquivos:Arquivo[];cost:number;revenue:number;grams:number};
 export type Quote={id:string;number:number;customerId:string;customerName:string;date:string;due:string;notes:string;items:Item[];cost:number;revenue:number;status:string};
 export type Order=Quote & {quoteId:string;stage:string;printed:boolean;painted:boolean;packed:boolean;delivered:boolean;photos:string[]};
-export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;fixedMonthly:number;piecesMonth:number};};
-export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.1,maintenance:1,paintRate:2,laborRate:0,machineRate:0,fixedMonthly:0,piecesMonth:0}});
+export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
+export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.1,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
 export const stages=['Na fila','Imprimindo','Acabamento','Embalagem','Pronto','Entregue'];
 export function stock(s:State,id:string){return s.movements.filter(x=>x.materialId===id).reduce((a,b)=>a+b.grams,0)}
 export function received(s:State,id:string){return money(s.payments.filter(x=>x.orderId===id).reduce((a,b)=>a+b.amount,0))}
@@ -115,14 +58,14 @@ export function applyAction(s:State,action:any):State{
   const p=z.object({company:name,document:z.string().trim().max(80).default(''),phone:txt,email:z.string().trim().max(200).default('').refine(v=>v===''||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),'E-mail inválido.'),address:txt,logo:z.string().max(2000).default('')}).parse(action.data);
   s.settings={...s.settings,...p};
  }else if(action.type==='settings'){
-  const p=z.object({energyRate:num,maintenance:num.max(100),paintRate:num,laborRate:num,machineRate:num,fixedMonthly:num.default(0),piecesMonth:num.default(0)}).parse(action.data);
+  const p=z.object({energyRate:num,maintenance:num.max(100),paintRate:num,laborRate:num,machineRate:num}).parse(action.data);
   s.settings={...s.settings,...p};
  }
  else if(action.type==='quote'){
-  const p=z.object({customerId:z.string(),date,due:date,notes:txt,items:z.array(z.object({name,category:name,materialId:z.string(),printerId:z.string(),calculation:calculationSchema,arquivos:z.array(arquivoSchema).max(10).default([])})).min(1).max(100)}).parse(action.data);
-  const customer=ref(s.customers,p.customerId,'Cliente');
-  const items=p.items.map(v=>{ref(s.materials,v.materialId,'Material');ref(s.printers,v.printerId,'Impressora');const c=calculate(v.calculation);return {...v,id:uid(),cost:c.cost,revenue:c.revenue,grams:c.grams}});
-  s.quotes.push({...p,id:uid(),number:s.quotes.length+1,customerName:customer.name,items,cost:money(items.reduce((a,b)=>a+b.cost,0)),revenue:money(items.reduce((a,b)=>a+b.revenue,0)),status:'Aberto'});
+  // A Precificacao foi apagada para ser refeita (28/09/2026), e com ela o
+  // motor que calculava custo e preco de cada item. Criar orcamento volta
+  // junto com a nova Precificacao.
+  throw new Error('Criar orçamento está desativado enquanto a Precificação é refeita.');
  }else if(action.type==='approve'){
   const q=ref(s.quotes,action.id,'Orçamento') as Quote;if(q.status!=='Aberto')throw new Error('Este orçamento já foi aprovado.');q.status='Aprovado';s.orders.push({...structuredClone(q),id:uid(),quoteId:q.id,number:s.orders.length+1,stage:'Na fila',printed:false,painted:false,packed:false,delivered:false,photos:[]});
  }else if(action.type==='production'){

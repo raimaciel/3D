@@ -20,6 +20,24 @@ A empresa **está começando e ainda não tem clientes**. O sistema nasce vazio:
 
 **Ela foi feita como Artifact do Claude** e depende de `window.claude.use('downloads')` para salvar arquivo, com fallback para download do navegador. Essa dependência **tem que sair** quando virar sistema — fora do app do Claude ela não existe.
 
+## ⚠ A Precificação do sistema foi APAGADA (28/09/2026)
+
+O dono mandou apagar o módulo inteiro de Precificação do Gestão 3D para **criar outro do zero**. Pedido textual: "apague cada coisa desse módulo, não só tira a tela, quero eliminar, vamos criar outra".
+
+**O que foi apagado:** a tela (painéis de peça, máquina, acabamento, personalização, modelagem, venda, o cartão do preço e o "Orçamento em preparação"), a lógica dela no `manager.tsx` (estado, `addItem`, `saveQuote`), `lib/precificacao.ts` e seus 49 testes, `lib/fatiador.ts` e seus 24 testes, `app/precificacao-extras.tsx`, `calculate()`/`defaults`/`analyzeOffer()` do `lib/domain.ts`, o custo fixo do mês nas Configurações, e 107 regras de CSS que só a tela usava.
+
+**O que ficou, de propósito:**
+- O **nome** "Precificação" no menu, com um aviso de reconstrução.
+- `calculationSchema` e o tipo `Calculation` em `lib/domain.ts`: são o **formato dos itens já salvos**, que Orçamentos, Pedidos, Produção e o PDF do orçamento ainda leem.
+- A ação `quote` do servidor existe, mas **recusa** com "Criar orçamento está desativado enquanto a Precificação é refeita". Aprovar orçamento, pedidos, produção e financeiro seguem funcionando.
+- Os **Parâmetros de custo** das Configurações (energia, hora de máquina, mão de obra, manutenção, pintura): são do módulo Configurações e guardam os valores do dono.
+- A **calculadora original** na raiz (`calculadora-3d.html`, `precificacao.js`, `teste-precificacao.js`, 52 testes) ficou **intocada**. É ali que a fórmula verificada continua viva.
+- O sistema agora abre na **Visão geral**.
+
+**Para recuperar qualquer peça apagada:** tudo está no commit `d3d70c1`, no ramo `claude/computador-windows`. Exemplo: `git show d3d70c1:gestao-3d/lib/precificacao.ts`.
+
+As seções abaixo sobre fórmula, escopos e melhorias descrevem **o módulo apagado**. Continuam valendo como conhecimento do negócio (as decisões de preço são do dono), mas **o código a que se referem não existe mais** no `gestao-3d/`.
+
 ### A fórmula de preço (regra de negócio central — não altere sem o dono)
 
 Custos, por impressão:
@@ -308,17 +326,12 @@ calculadora-3d.html     a calculadora de orçamento, funcionando
 precificacao.js         o motor de preço da calculadora, lógica pura
 teste-precificacao.js   52 testes do motor, sem dependências
 gestao-3d/              o sistema de gestão
-  lib/precificacao.ts        o motor de preço unificado (é este que vale)
-  lib/precificacao.teste.ts  49 testes do motor
   lib/auth.ts                senha e token de sessão
   lib/auth.teste.ts          37 testes de autenticação
   lib/sessao.ts              sessão no banco e guardas das rotas
   lib/limite.ts              trava de força bruta
   lib/arquivos.ts            o que entra: STL, 3MF e imagens, por assinatura
   lib/arquivos.teste.ts      35 testes de validação de arquivo
-  lib/fatiador.ts            lê peso e tempo do .gcode.3mf / .gcode
-  lib/fatiador.teste.ts      24 testes da leitura do fatiador
-  app/precificacao-extras.tsx  exemplos prontos, leitura do fatiador, "outro preço"
   app/acesso.tsx             tela de entrada e de primeiro acesso
   scripts/teste-acesso.sh    prova que a API está fechada
 CLAUDE.md               este arquivo
@@ -343,13 +356,7 @@ pnpm start      # sobe em http://127.0.0.1:8787
 
 As migrações só são necessárias na primeira vez; sem elas a API responde 503. **São duas**: a segunda cria as tabelas de login. O banco é chamado pelo nome do vínculo, `DB`, e não pelo nome do banco: o nome mudou de `site-creator-d1` para `fabricando3d` quando o projeto foi apontado para a conta real, e o comando antigo parou de funcionar por isso.
 
-**Rodar os testes do motor unificado** (dentro de `gestao-3d/`):
-
-```
-node --experimental-strip-types lib/precificacao.teste.ts
-```
-
-Sai `49 passaram, 0 falharam`. E os da autenticação:
+**Rodar os testes** (dentro de `gestao-3d/`). Os da autenticação:
 
 ```
 node --experimental-strip-types lib/auth.teste.ts
@@ -361,13 +368,11 @@ Sai `37 passaram, 0 falharam`. E os de arquivo:
 node --experimental-strip-types lib/arquivos.teste.ts
 ```
 
-Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. O primeiro teste prova que o motor unificado devolve número **idêntico** ao da calculadora em cinco cenários, com os recursos exclusivos do Gestão 3D desligados.
-
-E os da leitura do fatiador: `node --experimental-strip-types lib/fatiador.teste.ts` → `24 passaram, 0 falharam`. **`pnpm test` roda os quatro conjuntos**, e `pnpm build` chama `pnpm test` antes de construir.
+Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. **`pnpm test` roda os dois conjuntos**, e `pnpm build` chama `pnpm test` antes de construir. Os testes do motor de preço e da leitura do fatiador foram apagados junto com a Precificação.
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 
-**O que ainda não existe:** o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
+**O que ainda não existe:** a **nova Precificação** (a antiga foi apagada; sem ela não se cria orçamento), o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
 
 ## No computador do dono (Windows)
 
