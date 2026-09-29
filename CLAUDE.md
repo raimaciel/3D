@@ -25,10 +25,10 @@ A empresa **está começando e ainda não tem clientes**. O sistema nasce vazio:
 **Estado atual: a Precificação nova existe**, em `gestao-3d/app/precificacao.tsx`, escrita de forma legível (não nas linhas gigantes do `manager.tsx`). Foi desenhada com o dono a partir de quatro calculadoras que ele indicou (Onyon 3D, 3DCerrado, 3D Print Studio, Calcula-AI) e aprovada por rascunho no celular e no computador antes de ser programada.
 
 - **Celular primeiro:** uma coluna, com a barra do preço presa no rodapé. No computador (a partir de 1000 px), o resultado vira coluna fixa à direita.
-- **Filamento e impressora vêm do cadastro**, sem preço fixo: são botões com o que estiver cadastrado. Com um cadastro só, já vem escolhido. O preço por kg pode ser mudado só para aquele cálculo.
+- **Filamento e impressora vêm do cadastro**, sem preço fixo: são **menus com setinha** (o dono pediu: botões ocupavam espaço demais). Com um cadastro só, já vem escolhido. O preço por kg pode ser mudado só para aquele cálculo.
 - **A hora de máquina sai do cadastro da impressora:** o cadastro ganhou `value` (valor pago) e `lifeHours` (vida útil), e a hora vira valor ÷ vida útil. Se `machineRate` for digitado, ele manda.
 - **Botões de ROI de 20%, 30%, 35%, 50%, 100%, 150% e 200%** (pedido do dono), mais um campo livre. Começa em 100%.
-- **Exemplos prontos:** chaveiro, peça técnica, miniatura, decoração.
+- **Exemplos prontos:** chaveiro, peça técnica, miniatura, decoração, e **Outro**, que limpa nome, peso e tempo para digitar livre (pedido do dono).
 - **Seções recolhidas e já preenchidas:** máquina e energia, mão de obra e modelagem, falha, embalagem e acabamentos, venda. A hora de trabalho é campo livre.
 - **O resultado mostra** preço, custo, lucro, lucro por hora, preço mínimo, lote, de onde vem o custo, e "o cliente pediu outro preço?".
 - **Orçamento em preparação** na mesma tela: cliente, prazo, observações, anexo STL/3MF por peça, salvar.

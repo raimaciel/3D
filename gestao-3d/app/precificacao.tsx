@@ -204,30 +204,30 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
                 {e.nome}
               </button>
             ))}
+            <button type="button" onClick={() => { setC(x => ({ ...x, weight: 0, hours: 0 })); setNome(''); document.getElementById('pzNome')?.focus(); }}>
+              Outro
+            </button>
           </div>
 
           <Campo rotulo="Nome da peça">
-            <input value={nome} onChange={e => setNome(e.target.value)} placeholder="Chaveiro com nome" />
+            <input id="pzNome" value={nome} onChange={e => setNome(e.target.value)} placeholder="Digite o nome da peça" />
           </Campo>
 
-          <p className="pz-rotulo">Filamento</p>
-          <div className="pz-chips">
-            {s.materials.map(m => (
-              <button key={m.id} type="button" aria-pressed={materialId === m.id} onClick={() => escolherMaterial(m)}>
-                {nomeMaterial(m)} <small>{brl(Number(m.kgPrice) || 0)}/kg</small>
-              </button>
-            ))}
-            {!s.materials.length && <small className="pz-vazio">Nenhum filamento cadastrado.</small>}
-          </div>
-
-          <p className="pz-rotulo">Impressora</p>
-          <div className="pz-chips">
-            {s.printers.map(p => (
-              <button key={p.id} type="button" aria-pressed={printerId === p.id} onClick={() => escolherImpressora(p)}>
-                {nomeImpressora(p)} <small>{Number(p.power) || 0} W</small>
-              </button>
-            ))}
-            {!s.printers.length && <small className="pz-vazio">Nenhuma impressora cadastrada.</small>}
+          <div className="pz-grade2">
+            <Campo rotulo="Filamento">
+              <select className="select-trigger" value={materialId}
+                onChange={e => { const m = s.materials.find(x => x.id === e.target.value); if (m) escolherMaterial(m); else setMaterialId(''); }}>
+                <option value="">{s.materials.length ? 'Escolha o filamento' : 'Nenhum filamento cadastrado'}</option>
+                {s.materials.map(m => <option key={m.id} value={m.id}>{nomeMaterial(m)} — {brl(Number(m.kgPrice) || 0)}/kg</option>)}
+              </select>
+            </Campo>
+            <Campo rotulo="Impressora">
+              <select className="select-trigger" value={printerId}
+                onChange={e => { const p = s.printers.find(x => x.id === e.target.value); if (p) escolherImpressora(p); else setPrinterId(''); }}>
+                <option value="">{s.printers.length ? 'Escolha a impressora' : 'Nenhuma impressora cadastrada'}</option>
+                {s.printers.map(p => <option key={p.id} value={p.id}>{nomeImpressora(p)} — {Number(p.power) || 0} W</option>)}
+              </select>
+            </Campo>
           </div>
 
           <div className="pz-grade3">

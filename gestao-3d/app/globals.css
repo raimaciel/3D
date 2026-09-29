@@ -198,6 +198,7 @@ body {
 .pz-chips button[aria-pressed=true]{border-color:#0a98a8;background:#e6f6f8;color:#08707e}
 .pz-roi{width:84px;height:42px;border:1px solid #d6e0e9;border-radius:8px;padding:0 10px;font-size:14px}
 .pz-vazio{font-size:13px;color:#8093a2}
+.pz-grade2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .pz-grade3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
 .pz .field{margin-top:12px}
 .pz-anexo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px;border-top:1px solid #edf2f6;padding-top:14px}
