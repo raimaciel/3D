@@ -402,6 +402,8 @@ Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.s
 - **Contas a pagar**: o vencimento **já existia** (campo `due` das compras). Agora a lista sai em ordem de vencimento, com etiqueta "Atrasada há N dias" (vermelha), "Vence hoje", "Vence amanhã" / "em N dias" (até 3); e um quadro "Contas atrasadas" no topo do Financeiro, vermelho quando há alguma. Tudo manual, sem repetição automática (decisão do dono: são faturas de cartão com valor diferente todo mês).
 - `lib/store.ts` agora **completa dados salvos antigos** com o estado vazio ao carregar, para uma lista nova (como `investments`) não quebrar quem já tem dados.
 
+**Campo de dinheiro com máscara brasileira (29/09/2026).** Pedido do dono: o campo mostrava "524220" cru. Agora todo campo de dinheiro do sistema usa `InputDinheiro` (`app/campo-dinheiro.tsx`): os números entram pelos centavos, como no app do banco, e o campo mostra "R$ 5.242,20" enquanto se digita. Regra em `lib/dinheiro.ts`, com 25 testes. O `MoneyInput` do `manager.tsx` passou a usá-lo, então valem os cadastros, Financeiro e Configurações; a tarifa de energia (rótulo com "kWh") aceita **três casas** (R$ 0,857), como vem na conta de luz. Verificado digitando tecla por tecla: 524220 → R$ 5.242,20; apagar → R$ 524,22.
+
 **O que ainda não existe:** o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
 
 ## No computador do dono (Windows)

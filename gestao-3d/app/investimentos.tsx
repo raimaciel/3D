@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { orderProfit, type Entity, type State } from '@/lib/domain';
 import { lucroRecebido, retornoDoInvestimento } from '@/lib/financeiro';
+import { InputDinheiro } from './campo-dinheiro';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number.isFinite(v) ? v : 0);
 const hoje = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -19,18 +20,12 @@ const dataBR = (v: string) => v ? new Date(v + 'T12:00:00').toLocaleDateString('
 const CATEGORIAS = ['Impressora e equipamentos', 'Ferramentas', 'Filamento inicial', 'Peças e manutenção', 'Marketing', 'Móveis e estrutura', 'Outros'];
 const FORMAS = ['Pix', 'Cartão de crédito', 'Cartão de débito', 'Dinheiro', 'Transferência', 'Boleto'];
 
-type Formulario = { id?: string; date: string; description: string; category: string; amount: string; method: string; bank: string; notes: string };
-const vazio = (): Formulario => ({ date: hoje(), description: '', category: '', amount: '', method: 'Pix', bank: '', notes: '' });
+type Formulario = { id?: string; date: string; description: string; category: string; amount: number; method: string; bank: string; notes: string };
+const vazio = (): Formulario => ({ date: hoje(), description: '', category: '', amount: 0, method: 'Pix', bank: '', notes: '' });
 
 /** 0,49 -> "0,4%"; 37,8 -> "37%". Com pouco retorno, uma casa decimal, senão "0%" engana. */
 const porcento = (v: number) => (v < 10 ? Math.floor(v * 10) / 10 : Math.floor(v)).toLocaleString('pt-BR') + '%';
 
-/** Aceita "1.250,00", "1250,5" e "1250.5". */
-function lerValor(texto: string): number {
-  const limpo = texto.replace(/[^\d,.]/g, '');
-  const n = Number(limpo.includes(',') ? limpo.replace(/\./g, '').replace(',', '.') : limpo);
-  return Number.isFinite(n) ? n : 0;
-}
 
 export function Investimentos({ s, ocupado, salvar }: {
   s: State;
@@ -57,7 +52,7 @@ export function Investimentos({ s, ocupado, salvar }: {
 
   async function gravar() {
     if (!form) return;
-    const valor = lerValor(form.amount);
+    const valor = form.amount;
     if (!form.description.trim()) { toast.error('Descreva o investimento.'); return; }
     if (!form.category.trim()) { toast.error('Escolha ou digite a categoria.'); return; }
     if (!(valor > 0)) { toast.error('Informe um valor maior que zero.'); return; }
@@ -72,7 +67,7 @@ export function Investimentos({ s, ocupado, salvar }: {
 
   function editar(x: Entity) {
     setForm({ id: x.id, date: x.date, description: x.description, category: x.category,
-      amount: String(x.amount).replace('.', ','), method: x.method, bank: x.bank || '', notes: x.notes || '' });
+      amount: Number(x.amount) || 0, method: x.method, bank: x.bank || '', notes: x.notes || '' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -104,7 +99,7 @@ export function Investimentos({ s, ocupado, salvar }: {
               <input list="invCategorias" value={form.category} placeholder="Escolha ou digite" onChange={e => campo('category', e.target.value)} />
               <datalist id="invCategorias">{CATEGORIAS.map(c => <option key={c} value={c} />)}</datalist>
             </label>
-            <label className="field"><span>Valor (R$)</span><input inputMode="decimal" value={form.amount} placeholder="3.000,00" onChange={e => campo('amount', e.target.value)} /></label>
+            <label className="field"><span>Valor</span><InputDinheiro valor={form.amount} aoMudar={v => campo('amount', v)} /></label>
             <label className="field"><span>Forma de pagamento</span>
               <select className="select-trigger" value={form.method} onChange={e => campo('method', e.target.value)}>
                 {FORMAS.map(f => <option key={f} value={f}>{f}</option>)}

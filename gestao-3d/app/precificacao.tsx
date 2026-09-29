@@ -22,6 +22,7 @@ import {
   analyzeOffer, calculate, calculationSchema, defaults,
   type Arquivo, type Calculation, type Entity, type Kind, type State,
 } from '@/lib/domain';
+import { InputDinheiro } from './campo-dinheiro';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number.isFinite(v) ? v : 0);
 const hoje = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -31,13 +32,6 @@ function horasPorExtenso(horas: number): string {
   const total = Math.round(horas * 60), h = Math.floor(total / 60), m = total % 60;
   if (!h) return `${m} min`;
   return m ? `${h} h ${m} min` : `${h} h`;
-}
-
-/** Aceita "25,50", "1.250,00" e "25.5". */
-function lerNumero(texto: string): number {
-  const limpo = texto.replace(/[^\d,.-]/g, '');
-  const n = Number(limpo.includes(',') ? limpo.replace(/\./g, '').replace(',', '.') : limpo);
-  return Number.isFinite(n) ? n : 0;
 }
 
 /** Hora de máquina da impressora: a digitada, ou valor pago ÷ vida útil. */
@@ -95,17 +89,11 @@ function Tempo({ rotulo, horas, aoMudar, dica }: { rotulo: string; horas: number
   );
 }
 
-/** Campo de dinheiro: mostra "R$ 1,12" parado e deixa digitar livre com foco. */
-function Dinheiro({ rotulo, valor, aoMudar, dica }: { rotulo: string; valor: number; aoMudar: (v: number) => void; dica?: ReactNode }) {
-  const [editando, setEditando] = useState(false);
-  const [texto, setTexto] = useState('');
+/** Campo de dinheiro com a máscara brasileira ("R$ 5.242,20" enquanto digita). */
+function Dinheiro({ rotulo, valor, aoMudar, dica, casas = 2 }: { rotulo: string; valor: number; aoMudar: (v: number) => void; dica?: ReactNode; casas?: number }) {
   return (
     <Campo rotulo={rotulo} dica={dica}>
-      <input inputMode="decimal"
-        value={editando ? texto : brl(valor || 0)}
-        onFocus={() => { setEditando(true); setTexto(valor ? String(valor).replace('.', ',') : ''); }}
-        onChange={e => { setTexto(e.target.value); aoMudar(lerNumero(e.target.value)); }}
-        onBlur={() => setEditando(false)} />
+      <InputDinheiro valor={valor} aoMudar={aoMudar} casas={casas} />
     </Campo>
   );
 }
@@ -142,7 +130,7 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
   const [printerId, setPrinterId] = useState('');
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [enviando, setEnviando] = useState(false);
-  const [outroPreco, setOutroPreco] = useState('');
+  const [outroPreco, setOutroPreco] = useState(0);
   // "peca": digita-se peso e tempo de UMA peça. "lote": digita-se o total do
   // lote (a mesa cheia do fatiador) e a tela divide pela quantidade. O motor
   // sempre recebe POR PEÇA; a divisão mora só aqui.
@@ -174,7 +162,7 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
   useEffect(() => { if (!materialId && s.materials.length === 1) escolherMaterial(s.materials[0]); }, [s.materials]);
 
   const r = calculate(c);
-  const oferta = lerNumero(outroPreco);
+  const oferta = outroPreco;
   const analise = oferta > 0 ? analyzeOffer(c, oferta) : null;
   const horasTotais = c.hours * c.quantity;
   const semCadastro = !s.materials.length || !s.printers.length;
@@ -194,7 +182,7 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
     const material = s.materials.find(m => m.id === materialId);
     setCarrinho(v => [...v, { name: nome.trim(), category: String(material?.type || 'Personalizados') || 'Personalizados',
       materialId, printerId, calculation: structuredClone(c), arquivos }]);
-    setArquivos([]); setOutroPreco('');
+    setArquivos([]); setOutroPreco(0);
     toast.success('Peça adicionada ao orçamento');
   }
 
@@ -306,7 +294,7 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
 
         <Secao titulo="Máquina e energia" resumo={`${c.power} W · ${brl(c.energyRate)}/kWh · máquina ${brl(c.machineRate)}/h`}>
           <Numero rotulo="Potência (W)" valor={c.power} aoMudar={v => muda('power', v)} passo="1" dica="Vem da impressora escolhida." />
-          <Dinheiro rotulo="Tarifa de energia (R$/kWh)" valor={c.energyRate} aoMudar={v => muda('energyRate', v)} dica="O padrão fica em Configurações." />
+          <Dinheiro rotulo="Tarifa de energia (R$/kWh)" valor={c.energyRate} aoMudar={v => muda('energyRate', v)} casas={3} dica="O padrão fica em Configurações." />
           <Dinheiro rotulo="Hora de máquina (R$/h)" valor={c.machineRate} aoMudar={v => muda('machineRate', v)} dica="Valor pago na impressora ÷ vida útil." />
           <Numero rotulo="Manutenção (%)" valor={c.maintenance} aoMudar={v => muda('maintenance', v)} dica="Sobre filamento + energia." />
         </Secao>
@@ -360,7 +348,7 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
         {!r.blocked && (
           <div className="pz-outro">
             <b>O cliente pediu outro preço?</b>
-            <Campo rotulo="Preço por peça (R$)"><input inputMode="decimal" placeholder="25,00" value={outroPreco} onChange={e => setOutroPreco(e.target.value)} /></Campo>
+            <Campo rotulo="Preço por peça (R$)"><InputDinheiro valor={outroPreco} aoMudar={setOutroPreco} /></Campo>
             {analise && (
               <p className={oferta < r.minPrice ? 'pz-alerta' : 'pz-ok'} role={oferta < r.minPrice ? 'alert' : undefined}>
                 {oferta < r.minPrice
