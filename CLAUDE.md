@@ -27,6 +27,8 @@ A empresa **está começando e ainda não tem clientes**. O sistema nasce vazio:
 - **Celular primeiro:** uma coluna, com a barra do preço presa no rodapé. No computador (a partir de 1000 px), o resultado vira coluna fixa à direita.
 - **Filamento e impressora vêm do cadastro**, sem preço fixo: são **menus com setinha** (o dono pediu: botões ocupavam espaço demais). Com um cadastro só, já vem escolhido. O preço por kg vem **só** do menu: o campo separado de preço por kg foi tirado a pedido do dono, porque repetia a informação. Para mudar o preço, muda-se o cadastro do filamento.
 - **A hora de máquina sai do cadastro da impressora:** o cadastro ganhou `value` (valor pago) e `lifeHours` (vida útil), e a hora vira valor ÷ vida útil. Se `machineRate` for digitado, ele manda.
+- **Informar por peça ou por lote** (o dono pediu o nome "Lote", não "mesa inteira"). Em Lote, digita-se o peso e o tempo **totais** do lote, como o fatiador mostra com a mesa cheia, e a tela divide pela quantidade e mostra "= 8 g e 27 min por peça". Mudar a quantidade no modo Lote mantém o total e redivide. O motor sempre recebe por peça; a divisão mora só na tela.
+- **Tempo em horas e minutos**, dois campos. Antes era um campo em horas decimais, e o dono digitou "1,45" querendo 1 h 45 min, e a tela entendeu 1 h 27 min.
 - **Botões de ROI de 20%, 30%, 35%, 50%, 100%, 150% e 200%** (pedido do dono), mais um campo livre. Começa em 100%.
 - **Exemplos prontos:** chaveiro, peça técnica, miniatura, decoração, e **Outro**, que limpa nome, peso e tempo para digitar livre (pedido do dono).
 - **Seções recolhidas e já preenchidas:** máquina e energia, mão de obra e modelagem, falha, embalagem e acabamentos, venda. A hora de trabalho é campo livre.

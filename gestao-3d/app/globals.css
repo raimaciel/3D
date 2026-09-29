@@ -235,3 +235,6 @@ body {
 .pz-barra{position:sticky;bottom:0;display:flex;justify-content:space-between;align-items:center;background:#132840;color:white;padding:14px 18px;border-radius:12px 12px 0 0;margin:0 -4px;z-index:5}
 .pz-barra span{font-size:13px;color:#a8c0cf}
 .pz-barra b{font-size:22px;font-variant-numeric:tabular-nums}
+.pz-tempo{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;align-items:center;gap:6px}
+.pz-tempo span{font-size:13px;color:#7d91a2}
+.pz-divisao{font-size:13px;color:#08707e;background:#e6f6f8;border-radius:8px;padding:9px 12px;margin:10px 0 0}

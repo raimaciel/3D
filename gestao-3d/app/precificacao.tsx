@@ -74,6 +74,27 @@ function Numero({ rotulo, valor, aoMudar, dica, passo = 'any', min = 0 }:
   );
 }
 
+/**
+ * Tempo em HORAS e MINUTOS, como o fatiador mostra. Existe porque "1,45" num
+ * campo único vira 1 h 27 min (1,45 hora), e não 1 h 45 min: o dono caiu nisso.
+ * Guarda em horas decimais, que é o que o motor usa.
+ */
+function Tempo({ rotulo, horas, aoMudar, dica }: { rotulo: string; horas: number; aoMudar: (h: number) => void; dica?: ReactNode }) {
+  const total = Math.round((Number.isFinite(horas) ? horas : 0) * 60);
+  const h = Math.floor(total / 60), m = total % 60;
+  const inteiro = (v: string) => Math.max(0, Math.floor(Number(v) || 0));
+  return (
+    <Campo rotulo={rotulo} dica={dica}>
+      <div className="pz-tempo">
+        <input type="number" inputMode="numeric" min={0} step="1" aria-label={rotulo + ', horas'} value={h}
+          onChange={e => aoMudar(inteiro(e.target.value) + m / 60)} /><span>h</span>
+        <input type="number" inputMode="numeric" min={0} max={59} step="1" aria-label={rotulo + ', minutos'} value={m}
+          onChange={e => aoMudar(h + Math.min(59, inteiro(e.target.value)) / 60)} /><span>min</span>
+      </div>
+    </Campo>
+  );
+}
+
 /** Campo de dinheiro: mostra "R$ 1,12" parado e deixa digitar livre com foco. */
 function Dinheiro({ rotulo, valor, aoMudar, dica }: { rotulo: string; valor: number; aoMudar: (v: number) => void; dica?: ReactNode }) {
   const [editando, setEditando] = useState(false);
@@ -122,6 +143,10 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [outroPreco, setOutroPreco] = useState('');
+  // "peca": digita-se peso e tempo de UMA peça. "lote": digita-se o total do
+  // lote (a mesa cheia do fatiador) e a tela divide pela quantidade. O motor
+  // sempre recebe POR PEÇA; a divisão mora só aqui.
+  const [modo, setModo] = useState<'peca' | 'lote'>('peca');
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
   const [cliente, setCliente] = useState('');
   const [prazo, setPrazo] = useState(hoje());
@@ -230,12 +255,35 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
             </Campo>
           </div>
 
-          <div className="pz-grade3">
-            <Numero rotulo="Peso por peça (g)" valor={c.weight} aoMudar={v => muda('weight', v)} passo="1" />
-            <Numero rotulo="Tempo por peça (h)" valor={c.hours} aoMudar={v => muda('hours', v)} passo="0.05"
-              dica={c.hours > 0 ? horasPorExtenso(c.hours) : '1,5 = 1 h 30 min'} />
-            <Numero rotulo="Quantidade" valor={c.quantity} aoMudar={v => muda('quantity', Math.max(1, Math.round(v) || 1))} passo="1" min={1} />
+          <p className="pz-rotulo">Informar</p>
+          <div className="pz-chips">
+            <button type="button" aria-pressed={modo === 'peca'} onClick={() => setModo('peca')}>Por peça</button>
+            <button type="button" aria-pressed={modo === 'lote'} onClick={() => setModo('lote')}>Lote</button>
           </div>
+          {modo === 'peca' ? (
+            <div className="pz-grade3">
+              <Numero rotulo="Peso por peça (g)" valor={c.weight} aoMudar={v => muda('weight', v)} passo="1" />
+              <Tempo rotulo="Tempo por peça" horas={c.hours} aoMudar={v => muda('hours', v)} />
+              <Numero rotulo="Quantidade" valor={c.quantity} aoMudar={v => muda('quantity', Math.max(1, Math.round(v) || 1))} passo="1" min={1} />
+            </div>
+          ) : (
+            <>
+              <div className="pz-grade3">
+                <Numero rotulo="Peso do lote (g)" valor={Math.round(c.weight * c.quantity * 100) / 100}
+                  aoMudar={v => muda('weight', v / c.quantity)} passo="1" />
+                <Tempo rotulo="Tempo do lote" horas={c.hours * c.quantity} aoMudar={v => muda('hours', v / c.quantity)} />
+                <Numero rotulo="Peças no lote" valor={c.quantity} passo="1" min={1}
+                  aoMudar={v => {
+                    // Mudar a quantidade não muda o total do lote: redivide.
+                    const q = Math.max(1, Math.round(v) || 1);
+                    setC(x => ({ ...x, quantity: q, weight: x.weight * x.quantity / q, hours: x.hours * x.quantity / q }));
+                  }} />
+              </div>
+              <p className="pz-divisao">
+                = {(Math.round(c.weight * 100) / 100).toLocaleString('pt-BR')} g e {horasPorExtenso(c.hours)} por peça
+              </p>
+            </>
+          )}
 
           <p className="pz-rotulo">Lucro sobre o custo (ROI)</p>
           <div className="pz-chips">
