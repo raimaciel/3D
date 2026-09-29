@@ -258,7 +258,7 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
           <p className="pz-rotulo">Informar</p>
           <div className="pz-chips">
             <button type="button" aria-pressed={modo === 'peca'} onClick={() => setModo('peca')}>Por peça</button>
-            <button type="button" aria-pressed={modo === 'lote'} onClick={() => setModo('lote')}>Lote</button>
+            <button type="button" aria-pressed={modo === 'lote'} onClick={() => setModo('lote')}>Por lote</button>
           </div>
           {modo === 'peca' ? (
             <div className="pz-grade3">
