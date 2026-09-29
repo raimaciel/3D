@@ -174,3 +174,63 @@ body {
 
 
 
+
+/* Precificação (app/precificacao.tsx). Celular primeiro: uma coluna, com a
+   barra do preço presa no rodapé. No computador, o resultado vira coluna fixa. */
+.pz{display:grid;gap:18px;grid-template-columns:minmax(0,1fr);grid-template-areas:"entrada" "resultado" "orcamento"}
+.pz-entrada{grid-area:entrada;min-width:0}
+.pz-resultado{grid-area:resultado;min-width:0}
+.pz-orcamento{grid-area:orcamento;min-width:0;margin-bottom:70px}
+@media(min-width:1000px){
+ .pz{grid-template-columns:minmax(0,1fr) 330px;grid-template-areas:"entrada resultado" "orcamento resultado";align-items:start}
+ .pz-resultado{position:sticky;top:20px}
+ .pz-orcamento{margin-bottom:20px}
+ .pz-barra{display:none!important}
+}
+.pz .panel{margin-bottom:14px}
+.pz-rotulo{font-size:13px;font-weight:600;color:#3c5b70;margin:16px 0 8px}
+.pz-rotulo:first-child{margin-top:0}
+.pz-rotulo small{font-weight:400;color:#8093a2;margin-left:6px}
+.pz-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pz-chips button{border:1px solid #d6e0e9;border-radius:8px;padding:9px 13px;background:#f7fafc;color:#3f5f75;font-size:14px;font-weight:500;min-height:42px;transition:.15s}
+.pz-chips button small{display:block;font-size:11px;font-weight:400;color:#7d91a2}
+.pz-chips button:hover{border-color:#0a98a8}
+.pz-chips button[aria-pressed=true]{border-color:#0a98a8;background:#e6f6f8;color:#08707e}
+.pz-roi{width:84px;height:42px;border:1px solid #d6e0e9;border-radius:8px;padding:0 10px;font-size:14px}
+.pz-vazio{font-size:13px;color:#8093a2}
+.pz-grade3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.pz .field{margin-top:12px}
+.pz-anexo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px;border-top:1px solid #edf2f6;padding-top:14px}
+.pz-anexo .badge{display:inline-flex;align-items:center;gap:6px}
+.pz-secao{background:white;border:1px solid #dfe7ee;border-radius:12px;margin-bottom:10px}
+.pz-secao summary{display:flex;align-items:center;gap:10px;padding:15px 18px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.pz-secao summary::-webkit-details-marker{display:none}
+.pz-secao summary span{font-size:15px;font-weight:600;color:#203e56}
+.pz-secao summary small{font-size:12px;color:#7d91a2;flex-basis:100%;order:3;min-width:0}
+.pz-secao summary svg{margin-left:auto;color:#7d91a2;transition:.15s}
+.pz-secao[open] summary svg{transform:rotate(180deg)}
+.pz-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:4px 14px;padding:0 18px 16px}
+.pz-check{display:flex;align-items:center;gap:8px;font-size:14px;color:#3c5b70;margin-top:14px}
+.pz-cartao{background:#132840;color:#e8f1f6;border-radius:13px;padding:22px}
+.pz-rotulo-claro{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#9bb5c9}
+.pz-preco{font-size:38px;font-weight:700;letter-spacing:-1px;margin:4px 0 14px;font-variant-numeric:tabular-nums}
+.pz-numeros{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 0;border-top:1px solid #2c4a61;border-bottom:1px solid #2c4a61}
+.pz-numeros span{display:block;font-size:11px;color:#a8c0cf;margin-bottom:3px}
+.pz-numeros b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.pz-lucro{color:#65e0d2}
+.pz-lote{font-size:13px;color:#c9dbe6;margin:12px 0 0}
+.pz-composicao{margin:12px 0 16px;font-size:13px}
+.pz-composicao summary{cursor:pointer;color:#9bd8df}
+.pz-composicao div{display:flex;justify-content:space-between;padding:4px 0;color:#c9dbe6}
+.pz-cartao .btn{background:#1CB8C4;border-color:#1CB8C4;color:#082c41;margin-top:4px}
+.pz-alerta{background:#fff0ee;color:#a0423b;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;margin:10px 0 0}
+.pz-ok{background:#e9f7f1;color:#1d6f53;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;margin:10px 0 0}
+.pz-outro{background:white;border:1px solid #dfe7ee;border-radius:12px;padding:18px;margin-top:14px}
+.pz-outro>b{font-size:15px;color:#203e56}
+.pz-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #edf2f6;font-size:14px}
+.pz-item small{color:#7d91a2}
+.pz-item button{color:#a8737a}
+.pz-rodape{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-top:18px}
+.pz-barra{position:sticky;bottom:0;display:flex;justify-content:space-between;align-items:center;background:#132840;color:white;padding:14px 18px;border-radius:12px 12px 0 0;margin:0 -4px;z-index:5}
+.pz-barra span{font-size:13px;color:#a8c0cf}
+.pz-barra b{font-size:22px;font-variant-numeric:tabular-nums}

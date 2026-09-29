@@ -20,7 +20,25 @@ A empresa **está começando e ainda não tem clientes**. O sistema nasce vazio:
 
 **Ela foi feita como Artifact do Claude** e depende de `window.claude.use('downloads')` para salvar arquivo, com fallback para download do navegador. Essa dependência **tem que sair** quando virar sistema — fora do app do Claude ela não existe.
 
-## ⚠ A Precificação do sistema foi APAGADA (28/09/2026)
+## Precificação: apagada em 28/09 e REFEITA em 29/09/2026
+
+**Estado atual: a Precificação nova existe**, em `gestao-3d/app/precificacao.tsx`, escrita de forma legível (não nas linhas gigantes do `manager.tsx`). Foi desenhada com o dono a partir de quatro calculadoras que ele indicou (Onyon 3D, 3DCerrado, 3D Print Studio, Calcula-AI) e aprovada por rascunho no celular e no computador antes de ser programada.
+
+- **Celular primeiro:** uma coluna, com a barra do preço presa no rodapé. No computador (a partir de 1000 px), o resultado vira coluna fixa à direita.
+- **Filamento e impressora vêm do cadastro**, sem preço fixo: são botões com o que estiver cadastrado. Com um cadastro só, já vem escolhido. O preço por kg pode ser mudado só para aquele cálculo.
+- **A hora de máquina sai do cadastro da impressora:** o cadastro ganhou `value` (valor pago) e `lifeHours` (vida útil), e a hora vira valor ÷ vida útil. Se `machineRate` for digitado, ele manda.
+- **Botões de ROI de 20%, 30%, 35%, 50%, 100%, 150% e 200%** (pedido do dono), mais um campo livre. Começa em 100%.
+- **Exemplos prontos:** chaveiro, peça técnica, miniatura, decoração.
+- **Seções recolhidas e já preenchidas:** máquina e energia, mão de obra e modelagem, falha, embalagem e acabamentos, venda. A hora de trabalho é campo livre.
+- **O resultado mostra** preço, custo, lucro, lucro por hora, preço mínimo, lote, de onde vem o custo, e "o cliente pediu outro preço?".
+- **Orçamento em preparação** na mesma tela: cliente, prazo, observações, anexo STL/3MF por peça, salvar.
+- **Tarifa de energia padrão: R$ 1,12/kWh** (Enel Ceará), só para instalação nova. **Quem já tem Configurações salvas continua com o valor salvo** (o de teste está em 1,10). O dono muda em Configurações.
+
+**O motor não mudou:** `lib/precificacao.ts` voltou do commit `d3d70c1`, com os mesmos 49 testes. Custo fixo do mês existe no motor mas não na tela (o dono não pediu de volta). A leitura do fatiador **não** voltou.
+
+Verificado no navegador: calcular um chaveiro, lote de 10, salvar o orçamento #001 e vê-lo em Orçamentos. Largura de 375 px sem rolar para o lado.
+
+### Registro da exclusão de 28/09 (histórico)
 
 O dono mandou apagar o módulo inteiro de Precificação do Gestão 3D para **criar outro do zero**. Pedido textual: "apague cada coisa desse módulo, não só tira a tela, quero eliminar, vamos criar outra".
 
@@ -326,6 +344,9 @@ calculadora-3d.html     a calculadora de orçamento, funcionando
 precificacao.js         o motor de preço da calculadora, lógica pura
 teste-precificacao.js   52 testes do motor, sem dependências
 gestao-3d/              o sistema de gestão
+  lib/precificacao.ts        o motor de preço (voltou em 29/09)
+  lib/precificacao.teste.ts  49 testes do motor
+  app/precificacao.tsx       a tela de Precificação refeita
   lib/auth.ts                senha e token de sessão
   lib/auth.teste.ts          37 testes de autenticação
   lib/sessao.ts              sessão no banco e guardas das rotas
@@ -356,7 +377,7 @@ pnpm start      # sobe em http://127.0.0.1:8787
 
 As migrações só são necessárias na primeira vez; sem elas a API responde 503. **São duas**: a segunda cria as tabelas de login. O banco é chamado pelo nome do vínculo, `DB`, e não pelo nome do banco: o nome mudou de `site-creator-d1` para `fabricando3d` quando o projeto foi apontado para a conta real, e o comando antigo parou de funcionar por isso.
 
-**Rodar os testes** (dentro de `gestao-3d/`). Os da autenticação:
+**Rodar os testes** (dentro de `gestao-3d/`). Os do motor: `node --experimental-strip-types lib/precificacao.teste.ts` → `49 passaram, 0 falharam`. Os da autenticação:
 
 ```
 node --experimental-strip-types lib/auth.teste.ts
@@ -368,11 +389,11 @@ Sai `37 passaram, 0 falharam`. E os de arquivo:
 node --experimental-strip-types lib/arquivos.teste.ts
 ```
 
-Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. **`pnpm test` roda os dois conjuntos**, e `pnpm build` chama `pnpm test` antes de construir. Os testes do motor de preço e da leitura do fatiador foram apagados junto com a Precificação.
+Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.sh http://127.0.0.1:8787` confere que a API recusa quem não entrou: `9 passaram, 0 falharam`. Todos verificados. **`pnpm test` roda os três conjuntos**, e `pnpm build` chama `pnpm test` antes de construir.
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 
-**O que ainda não existe:** a **nova Precificação** (a antiga foi apagada; sem ela não se cria orçamento), o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
+**O que ainda não existe:** o módulo de Investimentos, o vencimento em contas a pagar, o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
 
 ## No computador do dono (Windows)
 
