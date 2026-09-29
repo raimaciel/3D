@@ -94,10 +94,12 @@ export type Entity={id:string;[key:string]:any};
 export type Item={id:string;name:string;category:string;materialId:string;printerId:string;calculation:Calculation;arquivos:Arquivo[];cost:number;revenue:number;grams:number};
 export type Quote={id:string;number:number;customerId:string;customerName:string;date:string;due:string;notes:string;items:Item[];cost:number;revenue:number;status:string};
 export type Order=Quote & {quoteId:string;stage:string;printed:boolean;painted:boolean;packed:boolean;delivered:boolean;photos:string[]};
-export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
-export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.12,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
+export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];investments:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
+export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],investments:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.12,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
 export const stages=['Na fila','Imprimindo','Acabamento','Embalagem','Pronto','Entregue'];
 export function stock(s:State,id:string){return s.movements.filter(x=>x.materialId===id).reduce((a,b)=>a+b.grams,0)}
+/** Lucro do pedido inteiro, já descontados imposto, marketplace, anúncio e taxa fixa. */
+export function orderProfit(o:Quote){return money(o.items.reduce((a,i)=>a+calculate(i.calculation).profit,0))}
 export function received(s:State,id:string){return money(s.payments.filter(x=>x.orderId===id).reduce((a,b)=>a+b.amount,0))}
 const ref=(list:Entity[],id:string,label:string)=>{const v=list.find(x=>x.id===id);if(!v)throw new Error(label+' não encontrado.');return v;};
 const uid=()=>crypto.randomUUID();
@@ -141,6 +143,16 @@ export function applyAction(s:State,action:any):State{
   const p=ref(s.purchases,action.id,'Conta');if(p.paid)throw new Error('Conta já paga.');p.paid=true;p.paidDate=date.parse(action.date);
  }else if(action.type==='movement'){
   const p=z.object({materialId:z.string(),grams:z.number().finite().min(-10000000).max(10000000).refine(n=>n!==0),date,reason:name}).parse(action.data);ref(s.materials,p.materialId,'Material');if(stock(s,p.materialId)+p.grams<0)throw new Error('O saldo não pode ficar negativo.');s.movements.push({...p,id:uid()});
+ }else if(action.type==='investment'){
+  // Investimento: o que foi posto na empresa (impressora, ferramentas,
+  // material inicial...). Com id, edita; sem id, cria.
+  const p=z.object({date,description:name,category:name,amount:num.positive(),method:name,bank:z.string().trim().max(100).default(''),notes:txt}).parse(action.data);
+  const id=action.id?z.string().uuid().parse(action.id):uid();
+  if(action.id)ref(s.investments,id,'Investimento');
+  s.investments=[...s.investments.filter(x=>x.id!==id),{...p,amount:money(p.amount),id}];
+ }else if(action.type==='removeInvestment'){
+  const id=z.string().uuid().parse(action.id);ref(s.investments,id,'Investimento');
+  s.investments=s.investments.filter(x=>x.id!==id);
  }else if(action.type==='photo'){
   const o=ref(s.orders,action.id,'Pedido') as Order;const key=z.string().regex(/^\/api\/files\/[a-f0-9-]+$/).parse(action.key);o.photos.push(key);
  }else throw new Error('Operação desconhecida.');return s;

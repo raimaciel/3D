@@ -395,7 +395,14 @@ Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.s
 
 **Dívida pré-existente:** `npx tsc --noEmit` acusa **7 erros de tipo em `lib/domain.ts`**, em `supplierId`, `spoolCount` e `spoolWeight` sobre um tipo união. Vieram assim do construtor do ChatGPT, não foram introduzidos aqui. O build passa mesmo assim porque o Vite remove os tipos sem conferir. Vale pagar essa dívida quando a tela for mexida.
 
-**O que ainda não existe:** o módulo de Investimentos, o vencimento em contas a pagar, o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
+**Investimentos e vencimento das contas a pagar (29/09/2026) — feitos e verificados.** `tsc` só com os 7 erros antigos; `pnpm build` roda 4 conjuntos (49 + 37 + 35 + 23). No navegador, com dados de teste: investido R$ 3.200, pedido de R$ 62,60 com R$ 31,30 de lucro pago pela metade → "já voltou" R$ 15,65 e "0,4%"; contas em ordem de vencimento com "Atrasada há 9 dias", "Vence hoje", "Vence em 2 dias"; quadro "Contas atrasadas" com R$ 450 em vermelho. Percentual pequeno aparece com uma casa decimal, arredondado para baixo, para não mostrar "0%" nem exagerar.
+
+- **Investimentos** (`app/investimentos.tsx`, menu abaixo de Financeiro): data, descrição, categoria (sugestões + livre), valor, forma de pagamento (Pix, cartões, dinheiro, transferência, boleto), banco ou conta, observações. Editar e apagar. Mostra total investido, **quanto já voltou**, quanto falta, barra de progresso e totais por categoria e por banco. Ações do servidor: `investment` (com `id` edita) e `removeInvestment`. Lista nova no estado: `investments`.
+- **"Quanto já voltou"** = lucro de cada pedido (soma de `calculate().profit` dos itens, já descontadas as taxas; `orderProfit()` em `lib/domain.ts`) × fração já recebida do cliente. Decisão do dono. Conta pura em `lib/financeiro.ts` (`lucroRecebido`).
+- **Contas a pagar**: o vencimento **já existia** (campo `due` das compras). Agora a lista sai em ordem de vencimento, com etiqueta "Atrasada há N dias" (vermelha), "Vence hoje", "Vence amanhã" / "em N dias" (até 3); e um quadro "Contas atrasadas" no topo do Financeiro, vermelho quando há alguma. Tudo manual, sem repetição automática (decisão do dono: são faturas de cartão com valor diferente todo mês).
+- `lib/store.ts` agora **completa dados salvos antigos** com o estado vazio ao carregar, para uma lista nova (como `investments`) não quebrar quem já tem dados.
+
+**O que ainda não existe:** o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
 
 ## No computador do dono (Windows)
 
