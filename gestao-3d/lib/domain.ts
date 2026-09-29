@@ -146,10 +146,26 @@ export function applyAction(s:State,action:any):State{
  }else if(action.type==='investment'){
   // Investimento: o que foi posto na empresa (impressora, ferramentas,
   // material inicial...). Com id, edita; sem id, cria.
-  const p=z.object({date,description:name,category:name,amount:num.positive(),method:name,bank:z.string().trim().max(100).default(''),notes:txt}).parse(action.data);
+  // Parcelado: quantas parcelas e o vencimento da 1ª; as parcelas pagas o
+  // dono marca à mão (ação investmentParcel). À vista conta como pago.
+  const p=z.object({date,description:name,category:name,amount:num.positive(),method:name,bank:z.string().trim().max(100).default(''),notes:txt,
+   parcelado:z.boolean().default(false),installments:z.number().int().min(1).max(120).default(1),firstDue:z.union([date,z.literal('')]).default('')}).parse(action.data);
+  if(p.parcelado&&p.installments<2)throw new Error('Parcelado precisa de pelo menos 2 parcelas.');
+  if(p.parcelado&&!p.firstDue)throw new Error('Informe o vencimento da 1ª parcela.');
+  if(!p.parcelado){p.installments=1;p.firstDue='';}
   const id=action.id?z.string().uuid().parse(action.id):uid();
-  if(action.id)ref(s.investments,id,'Investimento');
-  s.investments=[...s.investments.filter(x=>x.id!==id),{...p,amount:money(p.amount),id}];
+  const antes=action.id?ref(s.investments,id,'Investimento'):null;
+  // Ao editar, as parcelas já marcadas continuam marcadas (só as que ainda existem).
+  const paidParcels=p.parcelado?((antes?.paidParcels as number[])||[]).filter(n=>n<=p.installments):[];
+  s.investments=[...s.investments.filter(x=>x.id!==id),{...p,amount:money(p.amount),paidParcels,id}];
+ }else if(action.type==='investmentParcel'){
+  // Marca ou desmarca UMA parcela como paga.
+  const id=z.string().uuid().parse(action.id),numero=z.number().int().min(1).max(120).parse(action.numero),paga=z.boolean().parse(action.paga);
+  const inv=ref(s.investments,id,'Investimento');
+  if(!inv.parcelado||numero>Number(inv.installments))throw new Error('Parcela inexistente.');
+  const marcadas=new Set<number>((inv.paidParcels as number[])||[]);
+  if(paga)marcadas.add(numero);else marcadas.delete(numero);
+  inv.paidParcels=[...marcadas].sort((a,b)=>a-b);
  }else if(action.type==='removeInvestment'){
   const id=z.string().uuid().parse(action.id);ref(s.investments,id,'Investimento');
   s.investments=s.investments.filter(x=>x.id!==id);

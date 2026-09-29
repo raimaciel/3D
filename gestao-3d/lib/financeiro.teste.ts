@@ -2,7 +2,7 @@
  * Testes das contas do Financeiro e dos Investimentos.
  *   node --experimental-strip-types lib/financeiro.teste.ts
  */
-import { lucroRecebido, retornoDoInvestimento, situacaoVencimento } from './financeiro.ts';
+import { lucroRecebido, resumoParcelas, retornoDoInvestimento, situacaoVencimento, somarMeses, valoresDasParcelas } from './financeiro.ts';
 
 let passou = 0, falhou = 0;
 const ok = (nome: string, cond: boolean, det?: string) => {
@@ -54,6 +54,43 @@ titulo('3. Vencimento das contas a pagar');
   ok('com 4 dias ou mais, sem aviso', situacaoVencimento('2026-10-03', hoje).tom === 'ok');
   ok('virada de ano conta certo', situacaoVencimento('2026-12-31', '2027-01-02').texto === 'Atrasada há 2 dias');
   ok('data vazia não quebra', situacaoVencimento('', hoje).tom === 'ok');
+}
+
+titulo('4. Datas das parcelas');
+ok('10/09 + 1 mês = 10/10', somarMeses('2026-09-10', 1) === '2026-10-10');
+ok('virada de ano: 15/12 + 1 = 15/01', somarMeses('2026-12-15', 1) === '2027-01-15');
+ok('dia 31 em mês de 30 dias vira dia 30', somarMeses('2026-01-31', 3) === '2026-04-30');
+ok('dia 31 em fevereiro vira o último dia de fevereiro', somarMeses('2026-01-31', 1) === '2026-02-28');
+ok('volta ao dia 31 quando o mês tem 31', somarMeses('2026-01-31', 2) === '2026-03-31');
+
+titulo('5. Valores das parcelas batem com o total, centavo a centavo');
+{
+  const tres = valoresDasParcelas(100, 3);
+  ok('100 em 3 = 33,33 + 33,33 + 33,34', tres.join('|') === '33.33|33.33|33.34', tres.join('|'));
+  const dez = valoresDasParcelas(5442.2, 10);
+  ok('5.442,20 em 10 soma exatamente 5.442,20', Math.round(dez.reduce((a, b) => a + b, 0) * 100) === 544220);
+  ok('à vista (1 parcela) é o total', valoresDasParcelas(3000, 1).join() === '3000');
+  ok('quantidade inválida vira 1 parcela', valoresDasParcelas(50, 0).length === 1);
+}
+
+titulo('6. Resumo das parcelas: pagas, falta, lembrete');
+{
+  const hoje = '2026-09-29';
+  const r = resumoParcelas(1000, 10, '2026-07-10', [1, 2], hoje);
+  ok('10 parcelas', r.total === 10);
+  ok('2 marcadas como pagas', r.pagas === 2);
+  ok('pago 200, falta 800', r.valorPago === 200 && r.valorFalta === 800);
+  ok('a parcela 3 (10/09) venceu e não foi marcada: vira lembrete', r.atrasadas.length === 1 && r.atrasadas[0].numero === 3);
+  ok('lembrete diz há quantos dias', r.atrasadas[0].situacao.texto === 'Atrasada há 19 dias', r.atrasadas[0].situacao.texto);
+  ok('a próxima a pagar é a 3', r.proxima?.numero === 3);
+  ok('parcela 4 (10/10) ainda não venceu', r.parcelas[3].situacao.tom === 'ok');
+  ok('não está quitado', !r.quitado);
+  const quitado = resumoParcelas(300, 3, '2026-07-10', [1, 2, 3], hoje);
+  ok('todas marcadas: quitado, falta zero, sem próxima', quitado.quitado && quitado.valorFalta === 0 && quitado.proxima === null);
+  const foraDeOrdem = resumoParcelas(300, 3, '2026-07-10', [2], hoje);
+  ok('marcar fora de ordem: a próxima é a 1, que ficou para trás', foraDeOrdem.proxima?.numero === 1);
+  const semData = resumoParcelas(300, 3, '', [], hoje);
+  ok('sem data da 1ª parcela, não inventa atraso', semData.atrasadas.length === 0);
 }
 
 console.log('\n' + '='.repeat(56));
