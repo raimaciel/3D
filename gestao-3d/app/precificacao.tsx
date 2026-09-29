@@ -236,8 +236,6 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
               dica={c.hours > 0 ? horasPorExtenso(c.hours) : '1,5 = 1 h 30 min'} />
             <Numero rotulo="Quantidade" valor={c.quantity} aoMudar={v => muda('quantity', Math.max(1, Math.round(v) || 1))} passo="1" min={1} />
           </div>
-          <Dinheiro rotulo="Filamento, preço por kg" valor={c.kgPrice} aoMudar={v => muda('kgPrice', v)}
-            dica="Vem do filamento escolhido. Pode mudar aqui só para este cálculo." />
 
           <p className="pz-rotulo">Lucro sobre o custo (ROI)</p>
           <div className="pz-chips">
