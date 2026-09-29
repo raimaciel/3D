@@ -185,6 +185,22 @@ titulo('12. Cliente pediu outro preço');
   ok('preço inválido vira zero, sem NaN', !Number.isNaN(analisarPreco(ent, 'x' as never).lucroPeca));
 }
 
+titulo('13. Insumos (argola, saquinho, caixa...)');
+{
+  const sem = calcularPreco({ ...base });
+  const zero = calcularPreco({ ...base, insumos: 0 });
+  ok('insumo zero não muda o preço', quase(zero.preco, sem.preco));
+  const um = calcularPreco({ ...base, insumos: 1.5 });
+  ok('R$ 1,50 de insumos numa peça', quase(um.itens.Insumos, 1.5), brl(um.itens.Insumos));
+  const lote = calcularPreco({ ...base, lote: true, quantidade: 20, peso: 1000, horas: 70, insumos: 1.5 });
+  ok('num lote de 20, cada peça leva os seus: R$ 30', quase(lote.itens.Insumos, 30));
+  const falhaCom = calcularPreco({ ...base, falha: 10, insumos: 5 });
+  const falhaSem = calcularPreco({ ...base, falha: 10 });
+  ok('a margem de falha não cobre insumos', quase(falhaCom.itens.Falhas, falhaSem.itens.Falhas));
+  const comTaxas = calcularPreco({ ...base, insumos: 2, imposto: 6, marketplace: 16, roas: 5, taxaFixa: 6 });
+  ok('com insumos e taxas, o ROI pedido continua exato', quase(comTaxas.roiReal, 250, 1e-6), comTaxas.roiReal.toFixed(6));
+}
+
 console.log('\n' + '='.repeat(56));
 console.log(`${passou} passaram, ${falhou} falharam`);
 process.exit(falhou ? 1 : 0);

@@ -23,9 +23,16 @@ export const calculationSchema=z.object({
   customScope:z.enum(['pedido','peca']),
   finishMinutes:num,setupMinutes:num,laborRate:num,
   packaging:num,loss:num.max(100),
-  tax:num.max(100),marketplace:num.max(100),fixedFee:num,roas:num,roi:num
+  tax:num.max(100),marketplace:num.max(100),fixedFee:num,roas:num,roi:num,
+  // Insumos que UMA peça leva (argola, saquinho...). O custo por unidade é
+  // copiado no momento do cálculo: mudar o preço do insumo depois não mexe em
+  // orçamento já salvo. Default: orçamentos antigos não têm o campo.
+  supplies:z.array(z.object({id:z.string(),name:z.string().max(200),kind:z.enum(['acabamento','embalagem']),qty:num,unitCost:num})).max(30).default([])
 });
 export type Calculation=z.infer<typeof calculationSchema>;
+export type InsumoDoItem=Calculation['supplies'][number];
+/** Custo dos insumos de UMA peça. */
+export const custoInsumosPorPeca=(c:Pick<Calculation,'supplies'>)=>(c.supplies||[]).reduce((a,x)=>a+(Number(x.qty)||0)*(Number(x.unitCost)||0),0);
 
 /** Arquivo que o cliente mandou (STL, 3MF, foto de referência), preso ao item. */
 export const arquivoSchema=z.object({
@@ -40,8 +47,11 @@ export const defaults:Calculation={
   modelingHours:0,modelingRate:0,
   custom:false,customDescription:'',customMinutes:0,customRate:0,customScope:'pedido',
   finishMinutes:0,setupMinutes:0,laborRate:0,
-  packaging:2,loss:0,
-  tax:0,marketplace:0,fixedFee:0,roas:0,roi:100
+  // Embalagem e outros acabamentos agora vêm dos insumos cadastrados; os
+  // campos antigos ficam em zero (continuam valendo em orçamentos antigos).
+  packaging:0,loss:0,
+  tax:0,marketplace:0,fixedFee:0,roas:0,roi:100,
+  supplies:[]
 };
 // A tela pede peso e tempo POR PECA; o motor trabalha com o total do trabalho.
 // A conversao mora aqui, num lugar so, para nao se repetir nem divergir.
@@ -56,7 +66,7 @@ function entradaDoMotor(c:Calculation){
   personalizacaoMin:c.custom?c.customMinutes:0,personalizacaoHora:c.customRate,
   personalizacaoEscopo:c.customScope,
   acabamentoMin:c.finishMinutes,preparoMin:c.setupMinutes,maoHora:c.laborRate,
-  embalagem:c.packaging,falha:c.loss,
+  embalagem:c.packaging,insumos:custoInsumosPorPeca(c),falha:c.loss,
   imposto:c.tax,marketplace:c.marketplace,taxaFixa:c.fixedFee,roas:c.roas,roi:c.roi
  };
 }
@@ -94,10 +104,14 @@ export type Entity={id:string;[key:string]:any};
 export type Item={id:string;name:string;category:string;materialId:string;printerId:string;calculation:Calculation;arquivos:Arquivo[];cost:number;revenue:number;grams:number};
 export type Quote={id:string;number:number;customerId:string;customerName:string;date:string;due:string;notes:string;items:Item[];cost:number;revenue:number;status:string};
 export type Order=Quote & {quoteId:string;stage:string;printed:boolean;painted:boolean;packed:boolean;delivered:boolean;photos:string[]};
-export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];investments:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
-export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],investments:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.12,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
+export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];investments:Entity[];supplies:Entity[];supplyMovements:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
+export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],investments:[],supplies:[],supplyMovements:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.12,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
 export const stages=['Na fila','Imprimindo','Acabamento','Embalagem','Pronto','Entregue'];
 export function stock(s:State,id:string){return s.movements.filter(x=>x.materialId===id).reduce((a,b)=>a+b.grams,0)}
+/** Estoque de um insumo, em unidades (soma das entradas e saídas). */
+export function supplyStock(s:State,id:string){return (s.supplyMovements||[]).filter(x=>x.supplyId===id).reduce((a,b)=>a+(Number(b.qty)||0),0)}
+/** Quanto de cada insumo um pedido gasta: quantidade por peça × peças de cada item. */
+export function suppliesUsed(o:Quote){const used=new Map<string,{name:string;qty:number}>();for(const i of o.items)for(const x of (i.calculation.supplies||[])){const q=(Number(x.qty)||0)*(Number(i.calculation.quantity)||0);const a=used.get(x.id);used.set(x.id,{name:x.name,qty:(a?.qty||0)+q});}return used}
 /** Lucro do pedido inteiro, já descontados imposto, marketplace, anúncio e taxa fixa. */
 export function orderProfit(o:Quote){return money(o.items.reduce((a,i)=>a+calculate(i.calculation).profit,0))}
 export function received(s:State,id:string){return money(s.payments.filter(x=>x.orderId===id).reduce((a,b)=>a+b.amount,0))}
@@ -125,7 +139,8 @@ export function applyAction(s:State,action:any):State{
  }else if(action.type==='approve'){
   const q=ref(s.quotes,action.id,'Orçamento') as Quote;if(q.status!=='Aberto')throw new Error('Este orçamento já foi aprovado.');q.status='Aprovado';s.orders.push({...structuredClone(q),id:uid(),quoteId:q.id,number:s.orders.length+1,stage:'Na fila',printed:false,painted:false,packed:false,delivered:false,photos:[]});
  }else if(action.type==='production'){
-  const o=ref(s.orders,action.id,'Pedido') as Order,p=z.object({printed:z.boolean(),painted:z.boolean(),packed:z.boolean(),delivered:z.boolean(),stage:z.enum(['Na fila','Imprimindo','Acabamento','Embalagem','Pronto','Entregue'])}).parse(action.data),wasPrinted=o.printed;
+  const o=ref(s.orders,action.id,'Pedido') as Order,p=z.object({printed:z.boolean(),painted:z.boolean(),packed:z.boolean(),delivered:z.boolean(),stage:z.enum(['Na fila','Imprimindo','Acabamento','Embalagem','Pronto','Entregue'])}).parse(action.data),wasPrinted=o.printed,wasPacked=o.packed;
+  if(wasPacked&&!p.packed)throw new Error('Embalagem já registrada. Use um ajuste de estoque dos insumos para correções.');
   if(o.delivered&&(!p.delivered||p.stage!=='Entregue'))throw new Error('O pedido já foi entregue.');
   if(['Acabamento','Embalagem','Pronto'].includes(p.stage)&&!p.printed)throw new Error('Registre a impressão para avançar de etapa.');
   if(p.stage==='Pronto'&&(!p.packed||(o.items.some(x=>x.calculation.paint)&&!p.painted)))throw new Error('Conclua pintura aplicável e embalagem para marcar como pronto.');
@@ -134,6 +149,11 @@ export function applyAction(s:State,action:any):State{
   if((p.painted||p.packed)&&!p.printed)throw new Error('Registre a impressão primeiro.');
   if(p.stage==='Entregue'&&!p.delivered)throw new Error('Marque a entrega para concluir.');
   if(p.printed&&!wasPrinted){const used=new Map<string,number>();for(const i of o.items)used.set(i.materialId,(used.get(i.materialId)||0)+i.grams);for(const [id,g] of used){if(stock(s,id)+.00001<g)throw new Error('Estoque insuficiente de '+ref(s.materials,id,'Material').name+'. Registre uma compra ou entrada.');s.movements.push({id:uid(),materialId:id,grams:-g,date:new Date().toISOString().slice(0,10),reason:'Impressão do pedido #'+o.number,orderId:o.id});}}
+  // Insumos saem do estoque quando o pedido é embalado (decisão do dono).
+  // Insumo apagado do cadastro depois do orçamento é ignorado.
+  if(p.packed&&!wasPacked){const hojeISO=new Date().toISOString().slice(0,10);const saidas=[...suppliesUsed(o)].filter(([id])=>(s.supplies||[]).some(x=>x.id===id));
+   for(const [id,u] of saidas){const tem=supplyStock(s,id);if(tem+1e-9<u.qty)throw new Error(`Estoque insuficiente de ${u.name}: o pedido usa ${u.qty.toLocaleString('pt-BR')} e há ${tem.toLocaleString('pt-BR')}. Registre uma entrada em Materiais → Insumos.`);}
+   for(const [id,u] of saidas)s.supplyMovements.push({id:uid(),supplyId:id,qty:-u.qty,date:hojeISO,reason:'Embalagem do pedido #'+o.number,orderId:o.id});}
   Object.assign(o,p,{stage:p.delivered?'Entregue':p.stage});
  }else if(action.type==='payment'){
   const p=z.object({orderId:z.string(),amount:num.positive(),date,method:name}).parse(action.data);const o=ref(s.orders,p.orderId,'Pedido');p.amount=money(p.amount);if(!p.amount||p.amount>money(o.revenue-received(s,o.id)))throw new Error('O recebimento deve ser maior que zero e não pode superar o saldo.');s.payments.push({...p,id:uid()});
@@ -143,6 +163,25 @@ export function applyAction(s:State,action:any):State{
   const p=ref(s.purchases,action.id,'Conta');if(p.paid)throw new Error('Conta já paga.');p.paid=true;p.paidDate=date.parse(action.date);
  }else if(action.type==='movement'){
   const p=z.object({materialId:z.string(),grams:z.number().finite().min(-10000000).max(10000000).refine(n=>n!==0),date,reason:name}).parse(action.data);ref(s.materials,p.materialId,'Material');if(stock(s,p.materialId)+p.grams<0)throw new Error('O saldo não pode ficar negativo.');s.movements.push({...p,id:uid()});
+ }else if(action.type==='supply'){
+  // Insumo: argola, saquinho, caixa, ímã... contado em UNIDADES (o filamento
+  // é em gramas e fica em materials). Com id, edita; sem id, cria, e a
+  // quantidade inicial entra no estoque como primeira movimentação.
+  const p=z.object({name,kind:z.enum(['acabamento','embalagem']),unit:z.string().trim().min(1).max(30).default('unidade'),unitCost:num,minimum:num.default(0),notes:txt,initialQty:num.default(0)}).parse(action.data);
+  const id=action.id?z.string().uuid().parse(action.id):uid();
+  if(action.id)ref(s.supplies,id,'Insumo');
+  const {initialQty,...dados}=p;
+  s.supplies=[...s.supplies.filter(x=>x.id!==id),{...dados,unitCost:money(dados.unitCost),id}];
+  if(!action.id&&initialQty>0)s.supplyMovements.push({id:uid(),supplyId:id,qty:initialQty,date:new Date().toISOString().slice(0,10),reason:'Cadastro inicial'});
+ }else if(action.type==='supplyMovement'){
+  // Entrada (compra), perda ou ajuste. Positivo entra, negativo sai.
+  const p=z.object({supplyId:z.string().uuid(),qty:z.number().finite().refine(v=>v!==0,'Informe uma quantidade diferente de zero.'),date,reason:name}).parse(action.data);
+  ref(s.supplies,p.supplyId,'Insumo');
+  s.supplyMovements.push({...p,id:uid()});
+ }else if(action.type==='removeSupply'){
+  // Apaga o cadastro; orçamentos antigos guardam nome e custo do insumo e não mudam.
+  const id=z.string().uuid().parse(action.id);ref(s.supplies,id,'Insumo');
+  s.supplies=s.supplies.filter(x=>x.id!==id);
  }else if(action.type==='investment'){
   // Investimento: o que foi posto na empresa (impressora, ferramentas,
   // material inicial...). Com id, edita; sem id, cria.

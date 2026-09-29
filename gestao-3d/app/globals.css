@@ -238,6 +238,12 @@ body {
 .pz-tempo{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;align-items:center;gap:6px}
 .pz-tempo span{font-size:13px;color:#7d91a2}
 .pz-divisao{font-size:13px;color:#08707e;background:#e6f6f8;border-radius:8px;padding:9px 12px;margin:10px 0 0}
+.pz-insumo{display:grid;grid-template-columns:minmax(0,1fr) 70px 90px auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf2f6}
+.pz-insumo b{display:block;font-size:14px;color:#23455e}
+.pz-insumo small{display:block;font-size:12px;color:#7d91a2}
+.pz-insumo input{height:38px;border:1px solid #d6e0e9;border-radius:8px;padding:0 8px;font-size:14px;width:100%}
+.pz-insumo-total{font-size:14px;color:#203e56;text-align:right;font-variant-numeric:tabular-nums}
+.pz-insumo button{color:#a8737a}
 
 /* Contas a pagar: aviso de vencimento (lib/financeiro.ts, situacaoVencimento) */
 .venc{display:inline-flex;flex-direction:column;gap:4px}

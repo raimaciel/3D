@@ -57,6 +57,9 @@ export type EntradaPreco = {
   maoHora: number;           // R$/h
 
   embalagem: number;     // R$ por peça
+  // Insumos cadastrados (argola, saquinho, caixa, ímã...): soma do custo dos
+  // insumos que UMA peça leva. Multiplica pela quantidade.
+  insumos: number;       // R$ por peça
   falha: number;         // %
 
   // Custo fixo do mês (DAS do MEI, internet, assinaturas, aluguel): existe
@@ -102,7 +105,7 @@ export const entradaVazia = (): EntradaPreco => ({
   modelagemHoras: 0, modelagemHora: 0,
   personalizacaoMin: 0, personalizacaoHora: 0, personalizacaoEscopo: 'pedido',
   acabamentoMin: 0, preparoMin: 0, maoHora: 0,
-  embalagem: 0, falha: 0, custoFixoMes: 0, pecasMes: 0,
+  embalagem: 0, insumos: 0, falha: 0, custoFixoMes: 0, pecasMes: 0,
   imposto: 0, marketplace: 0, taxaFixa: 0, roas: 0, roi: 0
 });
 
@@ -128,6 +131,7 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
                 + n(e.acabamentoFixo) * qtd;
   const acabamento = n(e.acabamentoMin) * qtd / 60 * n(e.maoHora);
   const embalagem = n(e.embalagem) * qtd;
+  const insumos = n(e.insumos) * qtd;
   const custoFixo = n(e.pecasMes) > 0 ? n(e.custoFixoMes) / n(e.pecasMes) * qtd : 0;
 
   // Uma vez no trabalho / no pedido
@@ -140,6 +144,8 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
   // Inclui preparo e acabamento, porque o trabalho é refeito.
   // Exclui modelagem, porque o arquivo CAD continua valendo.
   // Exclui embalagem, porque a peça perdida nunca chegou a ser embalada.
+  // Exclui insumos pelo mesmo motivo: a argola e o saquinho só entram depois
+  // da impressão; peça que falhou não gastou nenhum (decisão do dono, 29/09).
   // Exclui custo fixo, porque a conta do mês não cresce quando uma peça falha.
   const falhas = (filamento + energia + maquina + manutencao + pintura
                   + preparo + acabamento) * n(e.falha) / 100;
@@ -148,7 +154,7 @@ export function calcularPreco(entrada: Partial<EntradaPreco>): SaidaPreco {
     Filamento: filamento, Energia: energia, 'Máquina': maquina,
     'Manutenção': manutencao, Pintura: pintura, Modelagem: modelagem,
     'Personalização': personalizacao, Preparo: preparo,
-    Acabamento: acabamento, Embalagem: embalagem, 'Custo fixo': custoFixo,
+    Acabamento: acabamento, Embalagem: embalagem, Insumos: insumos, 'Custo fixo': custoFixo,
     Falhas: falhas
   };
 

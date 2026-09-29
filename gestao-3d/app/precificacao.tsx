@@ -19,7 +19,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ChevronDown, Paperclip, Plus, Trash2 } from 'lucide-react';
 import {
-  analyzeOffer, calculate, calculationSchema, defaults,
+  analyzeOffer, calculate, calculationSchema, custoInsumosPorPeca, defaults,
   type Arquivo, type Calculation, type Entity, type Kind, type State,
 } from '@/lib/domain';
 import { InputDinheiro } from './campo-dinheiro';
@@ -155,6 +155,22 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
   function escolherImpressora(p: Entity) {
     setPrinterId(p.id);
     setC(x => ({ ...x, power: Number(p.power) || 0, machineRate: horaDeMaquina(p) }));
+  }
+
+  // Insumos da peça. O custo por unidade é copiado do cadastro AGORA: mudar o
+  // preço do insumo depois não mexe em orçamento já salvo.
+  function adicionarInsumo(id: string) {
+    const x = (s.supplies || []).find(i => i.id === id);
+    if (!x) return;
+    setC(v => {
+      const ja = v.supplies.findIndex(i => i.id === id);
+      if (ja >= 0) return { ...v, supplies: v.supplies.map((i, k) => k === ja ? { ...i, qty: i.qty + 1 } : i) };
+      return { ...v, supplies: [...v.supplies, { id: x.id, name: String(x.name), kind: x.kind === 'embalagem' ? 'embalagem' : 'acabamento', qty: 1, unitCost: Number(x.unitCost) || 0 }] };
+    });
+  }
+  /** Muda a quantidade por peça; -1 tira o insumo da peça. */
+  function mudaInsumo(indice: number, quantidade: number) {
+    setC(v => ({ ...v, supplies: quantidade < 0 ? v.supplies.filter((_, k) => k !== indice) : v.supplies.map((i, k) => k === indice ? { ...i, qty: quantidade } : i) }));
   }
 
   // Com um cadastro só (a A1, um filamento), já vem escolhido.
@@ -307,10 +323,35 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
           <Dinheiro rotulo="Valor da hora de modelagem (R$/h)" valor={c.modelingRate} aoMudar={v => muda('modelingRate', v)} />
         </Secao>
 
-        <Secao titulo="Falha, embalagem e acabamentos" resumo={`falha ${c.loss}% · embalagem ${brl(c.packaging)}`}>
+        <Secao titulo="Insumos da peça" resumo={c.supplies.length
+          ? `${c.supplies.map(x => `${x.qty}× ${x.name}`).join(', ')} · ${brl(custoInsumosPorPeca(c))} por peça`
+          : 'argola, embalagem... nenhum escolhido'}>
+          <div className="inv-largo">
+            {c.supplies.map((x, i) => (
+              <div className="pz-insumo" key={x.id}>
+                <span><b>{x.name}</b><small>{brl(x.unitCost)} cada · {x.kind === 'embalagem' ? 'embalagem' : 'acabamento'}</small></span>
+                <input type="number" inputMode="numeric" min={0} step="1" aria-label={'Quantidade de ' + x.name + ' por peça'} value={x.qty}
+                  onChange={e => mudaInsumo(i, Math.max(0, Number(e.target.value) || 0))} />
+                <span className="pz-insumo-total">{brl(x.qty * x.unitCost)}</span>
+                <button aria-label={'Tirar ' + x.name} onClick={() => mudaInsumo(i, -1)}><Trash2 size={15} /></button>
+              </div>
+            ))}
+            {(s.supplies || []).length ? (
+              <label className="field"><span>Adicionar insumo (quantidade por peça)</span>
+                <select className="select-trigger" value="" onChange={e => { if (e.target.value) adicionarInsumo(e.target.value); }}>
+                  <option value="">Escolha o insumo</option>
+                  {(s.supplies || []).map(x => <option key={x.id} value={x.id}>{x.name} — {brl(Number(x.unitCost) || 0)} por {x.unit}</option>)}
+                </select>
+              </label>
+            ) : (
+              <p className="pz-vazio">Nenhum insumo cadastrado. Cadastre em Materiais → Insumos.</p>
+            )}
+            <small className="pz-vazio">Multiplica pela quantidade de peças e fica fora da margem de falha.</small>
+          </div>
+        </Secao>
+
+        <Secao titulo="Falha e pintura" resumo={`falha ${c.loss}%${c.paint ? ' · com pintura' : ''}`}>
           <Numero rotulo="Margem de falha (%)" valor={c.loss} aoMudar={v => muda('loss', v)} dica="Cobre material, energia, máquina, preparo e acabamento." />
-          <Dinheiro rotulo="Embalagem, por peça" valor={c.packaging} aoMudar={v => muda('packaging', v)} />
-          <Dinheiro rotulo="Outros acabamentos, por peça" valor={c.finish} aoMudar={v => muda('finish', v)} dica="Argola, ímã, parafuso." />
           <label className="pz-check"><input type="checkbox" checked={c.paint} onChange={e => muda('paint', e.target.checked)} /> Tem pintura</label>
           {c.paint && <Dinheiro rotulo="Pintura (R$ por 100 g)" valor={c.paintRate} aoMudar={v => muda('paintRate', v)} />}
         </Secao>
