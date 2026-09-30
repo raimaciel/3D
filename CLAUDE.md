@@ -440,7 +440,7 @@ Sai `35 passaram, 0 falharam`. Com o sistema no ar, `bash scripts/teste-acesso.s
 
 **Campo de dinheiro com máscara brasileira (29/09/2026).** Pedido do dono: o campo mostrava "524220" cru. Agora todo campo de dinheiro do sistema usa `InputDinheiro` (`app/campo-dinheiro.tsx`): os números entram pelos centavos, como no app do banco, e o campo mostra "R$ 5.242,20" enquanto se digita. Regra em `lib/dinheiro.ts`, com 25 testes. O `MoneyInput` do `manager.tsx` passou a usá-lo, então valem os cadastros, Financeiro e Configurações; a tarifa de energia (rótulo com "kWh") aceita **três casas** (R$ 0,857), como vem na conta de luz. Verificado digitando tecla por tecla: 524220 → R$ 5.242,20; apagar → R$ 524,22.
 
-**O que ainda não existe:** o site público (vitrine), o portal do cliente e o banco relacional. A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
+**O que ainda não existe:** o portal do cliente e o banco relacional. (O site público existe, em stand-by na prévia; veja "Publicação".) A calculadora (`calculadora-3d.html`) segue como peça avulsa, mas o motor de preço dela já é o que vale dentro do Gestão 3D.
 
 ## No computador do dono (Windows)
 
@@ -477,7 +477,21 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Feito em 30/09 (dono):** **Always Use HTTPS** ligado na zona (SSL/TLS → Edge Certificates). Verificado: `http://gestao3d...` responde 301 para `https://`. A mensagem "No access: Access to CSRs has not been granted" que aparece nessa tela é do recurso pago ACM e é inofensiva. HSTS ficou desligado de propósito, por ser difícil de desfazer. Registro antigo: `fabricando3d.com.br` (SSL/TLS → Edge Certificates). Em 30/09 o endereço com `http://` respondia 200 sem mandar para `https://`; o cookie de sessão só leva `Secure` em https, então um login feito em http viaja sem proteção.
 
-**Site público (30/09/2026, construído e testado no computador; falta publicar e ligar o domínio raiz).** Rascunho aprovado pelo dono: chamada "Sua ideia vira peça de verdade" (provisória), cubo turquesa no lugar do logo (logo ainda será feito), **laranja forte `#E0600B`** nos botões (ele escolheu o tom 3), atendimento "Fortaleza e região metropolitana, com envio para todo o Brasil" (para o Google local), WhatsApp (85) 99839-3893, Instagram @fabricando3d.ofc.
+**Decisão do dono em 30/09/2026: o site completo fica em stand-by, e o domínio principal mostra "Em breve".** Pedido textual: "como é um site provisório, eu não quero que coloque no ar… landing page estática… em breve". Ficou assim, por endereço (`qualPagina` em `lib/site.ts`, 32 testes):
+
+| Endereço | Mostra | Google |
+|---|---|---|
+| `fabricando3d.com.br` e `www.` | página **Em breve** (`app/em-breve.tsx`) | **aparece** (`index, follow`, canônico, Open Graph, ficha `LocalBusiness`) |
+| `previa.fabricando3d.com.br` | o **site completo**, com faixa laranja "Prévia do novo site · em construção", **sem senha**, para mostrar e receber opiniões | **não aparece** (`noindex`, `robots.txt` bloqueia tudo) |
+| `gestao3d.`, `workers.dev`, qualquer outro | a gestão, com login | não aparece |
+
+- **Em breve** (rascunho aprovado: "tudo certo pode manda ver"): fundo azul-marinho, cubo turquesa, "Fabricando **3D**", selo laranja EM BREVE, "Nosso novo site está chegando", **só a frase "Impressão 3D em Fortaleza"** (pedido dele), botão laranja do WhatsApp com mensagem pronta, botão do Instagram e o telefone. Montada no servidor, sem JavaScript no navegador; estilos `.eb-*` no `globals.css`. Verificada em 1280 px e em 375 px, sem rolar para o lado.
+- No computador, para conferir: `?embreve=1` mostra o Em breve e `?site=1` mostra a prévia. No domínio principal esses parâmetros não trocam nada.
+- `robots.txt` só libera o domínio principal (menos `/api/`), com a linha do `sitemap.xml`.
+- **Quando o dono aprovar o site completo:** em `qualPagina`, trocar `'embreve'` por `'previa'` no domínio principal, tirar a faixa de prévia e deixar o `index` valer para ele.
+- O dono já cadastrou `previa.fabricando3d.com.br` como Custom Domain do Worker `3d`. **Falta ele cadastrar `fabricando3d.com.br` e `www.fabricando3d.com.br`** do mesmo jeito (aba Domains).
+
+**Site público (30/09/2026, construído e testado no computador; hoje em stand-by na prévia, veja acima).** Rascunho aprovado pelo dono: chamada "Sua ideia vira peça de verdade" (provisória), cubo turquesa no lugar do logo (logo ainda será feito), **laranja forte `#E0600B`** nos botões (ele escolheu o tom 3), atendimento "Fortaleza e região metropolitana, com envio para todo o Brasil" (para o Google local), WhatsApp (85) 99839-3893, Instagram @fabricando3d.ofc.
 - **Um sistema, dois endereços** (`app/page.tsx`, `force-dynamic`): `fabricando3d.com.br` e `www.` mostram o site; qualquer outro mostra a gestão. `?site=1` mostra o site em qualquer endereço, para conferir. A gestão sai com `noindex, nofollow`; o site com `index, follow`, canônico e Open Graph.
 - **Site montado no servidor** (`app/site-publico.tsx`, sem JavaScript no navegador): topo, chamada, vitrine, como funciona (3 passos), materiais, contato, rodapé e botão flutuante do WhatsApp. Ficha de empresa local para o Google (JSON-LD `LocalBusiness`). Fontes Sora e Figtree. Estilos com prefixo `.sp` no `globals.css`.
 - **Vitrine = Produtos marcados "Mostrar no site"** (campos novos `showOnSite` e `sitePrice` no cadastro de produto; preço 0 = "Peça seu orçamento"). `lib/site.ts` (23 testes) só deixa sair nome, categoria, descrição, cor, preço e foto: **nunca custo, peso ou tempo**. "Quero esta peça" abre o WhatsApp com a mensagem já escrita com o nome da peça.

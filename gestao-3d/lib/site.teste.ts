@@ -2,7 +2,7 @@
  * Testes das regras do site público.
  *   node --experimental-strip-types lib/site.teste.ts
  */
-import { ehEnderecoDoSite, fotoEhPublica, idDaFoto, linkWhatsApp, mensagemDaPeca, produtosDoSite } from './site.ts';
+import { ehEnderecoDoSite, fotoEhPublica, idDaFoto, linkWhatsApp, mensagemDaPeca, produtosDoSite, qualPagina } from './site.ts';
 
 let passou = 0, falhou = 0;
 const ok = (nome: string, cond: boolean, det?: string) => {
@@ -20,6 +20,17 @@ ok('o workers.dev NÃO é o site', !ehEnderecoDoSite('3d.ranbm3.workers.dev'));
 ok('localhost NÃO é o site', !ehEnderecoDoSite('localhost:8787'));
 ok('endereço parecido de outra pessoa NÃO é o site', !ehEnderecoDoSite('fabricando3d.com.br.golpe.com'));
 ok('sem endereço, NÃO é o site', !ehEnderecoDoSite(null));
+
+titulo('1b. Qual página cada endereço mostra (Em breve / prévia / gestão)');
+ok('fabricando3d.com.br mostra "Em breve"', qualPagina('fabricando3d.com.br') === 'embreve');
+ok('www. também mostra "Em breve"', qualPagina('www.fabricando3d.com.br') === 'embreve');
+ok('previa. mostra o site completo', qualPagina('previa.fabricando3d.com.br') === 'previa');
+ok('gestao3d. mostra a gestão', qualPagina('gestao3d.fabricando3d.com.br') === 'gestao');
+ok('workers.dev mostra a gestão', qualPagina('3d.ranbm3.workers.dev') === 'gestao');
+ok('localhost com ?site=1 mostra a prévia', qualPagina('localhost:8787', { site: '1' }) === 'previa');
+ok('localhost com ?embreve=1 mostra "Em breve"', qualPagina('localhost:8787', { embreve: '1' }) === 'embreve');
+ok('no domínio principal, ?site=1 NÃO troca a página', qualPagina('fabricando3d.com.br', { site: '1' }) === 'embreve');
+ok('endereço parecido de outra pessoa mostra a gestão (com login)', qualPagina('previa.fabricando3d.com.br.golpe.com') === 'gestao');
 
 titulo('2. O que vai para a vitrine');
 {

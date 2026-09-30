@@ -1,5 +1,7 @@
 /*
- * Site público da Fabricando 3D (30/09/2026), em fabricando3d.com.br.
+ * Site público da Fabricando 3D (30/09/2026). EM STAND-BY: por decisão do
+ * dono, aparece só na prévia (previa.fabricando3d.com.br, fora do Google);
+ * o domínio principal mostra a página "Em breve" (app/em-breve.tsx).
  *
  * Montado NO SERVIDOR (sem 'use client'): o Google recebe a página pronta,
  * com o texto e as peças, que é o que ele precisa para achar o site.
@@ -13,7 +15,7 @@
  */
 import { Box, MessageCircle, Package, Ruler, MapPin, Truck } from 'lucide-react';
 import { readWorkspace } from '@/lib/store';
-import { EMPRESA, linkWhatsApp, mensagemDaPeca, produtosDoSite, type ProdutoDoSite } from '@/lib/site';
+import { EMPRESA, fichaParaOGoogle, linkWhatsApp, mensagemDaPeca, produtosDoSite, type ProdutoDoSite } from '@/lib/site';
 
 /** Ícone do Instagram (a biblioteca de ícones não traz mais ícones de marcas). */
 function Instagram({ size = 18 }: { size?: number }) {
@@ -31,22 +33,8 @@ async function carregarPecas(): Promise<ProdutoDoSite[]> {
   catch (e) { console.error('Site: não foi possível ler os produtos:', e instanceof Error ? e.message : String(e)); return []; }
 }
 
-/** Ficha de "empresa local" para o Google (dados estruturados schema.org). */
-function fichaParaOGoogle() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    name: EMPRESA.nome,
-    description: 'Impressão 3D e modelagem 3D sob encomenda em Fortaleza. Peças personalizadas, chaveiros, peças técnicas e decoração em PLA, PETG e ABS/ASA.',
-    url: EMPRESA.endereco,
-    telephone: '+' + EMPRESA.whatsapp,
-    address: { '@type': 'PostalAddress', addressLocality: EMPRESA.cidade, addressRegion: EMPRESA.estado, addressCountry: 'BR' },
-    areaServed: [{ '@type': 'City', name: 'Fortaleza' }, { '@type': 'State', name: 'Ceará' }, { '@type': 'Country', name: 'Brasil' }],
-    sameAs: [`https://www.instagram.com/${EMPRESA.instagram}/`],
-  };
-}
-
-export async function SitePublico() {
+/** `previa`: mostra a faixa "site em construção" (em previa.fabricando3d.com.br). */
+export async function SitePublico({ previa = false }: { previa?: boolean }) {
   const pecas = await carregarPecas();
   const zap = linkWhatsApp('Olá! Vim pelo site da Fabricando 3D e quero fazer um orçamento.');
 
@@ -56,6 +44,12 @@ export async function SitePublico() {
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(fichaParaOGoogle()) }} />
 
+      {previa && (
+        <div className="sp-previa" role="note">
+          <b>Prévia do novo site</b> · em construção. Gostou ou tem ideias?{' '}
+          <a href={linkWhatsApp('Olá! Vi a prévia do novo site da Fabricando 3D e tenho uma opinião:')} target="_blank" rel="noopener">Mande pelo WhatsApp</a>
+        </div>
+      )}
       <header className="sp-topo">
         <a className="sp-logo" href="#inicio" aria-label="Fabricando 3D, início"><span><Box size={20} /></span>Fabricando 3D</a>
         <nav className="sp-menu" aria-label="Seções do site">

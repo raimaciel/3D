@@ -25,11 +25,37 @@ export const EMPRESA = {
 } as const;
 
 const HOSTS_DO_SITE = ['fabricando3d.com.br', 'www.fabricando3d.com.br'];
+const HOST_DA_PREVIA = 'previa.fabricando3d.com.br';
 
-/** O endereço digitado é o do site? `host` pode vir com porta. */
+const limpaHost = (host: string | null | undefined) => String(host || '').toLowerCase().trim().replace(/:\d+$/, '');
+
+/** O endereço digitado é o do site (domínio principal)? `host` pode vir com porta. */
 export function ehEnderecoDoSite(host: string | null | undefined): boolean {
-  const h = String(host || '').toLowerCase().trim().replace(/:\d+$/, '');
-  return HOSTS_DO_SITE.includes(h);
+  return HOSTS_DO_SITE.includes(limpaHost(host));
+}
+
+/*
+ * Qual página cada endereço mostra (30/09/2026, decisão do dono):
+ *   fabricando3d.com.br e www.   -> "embreve": página "Em breve", NO Google,
+ *                                   para começar a divulgar o domínio
+ *   previa.fabricando3d.com.br   -> "previa": o site completo em stand-by,
+ *                                   sem senha, FORA do Google, para mostrar
+ *                                   e receber opiniões
+ *   qualquer outro (gestao3d.., workers.dev, localhost) -> "gestao"
+ * No computador, para conferir: ?site=1 mostra a prévia, ?embreve=1 a
+ * página Em breve.
+ * Quando o dono aprovar o site: trocar "embreve" por "previa" no domínio
+ * principal (e aí o site completo vai para o Google).
+ */
+export type Pagina = 'embreve' | 'previa' | 'gestao';
+
+export function qualPagina(host: string | null | undefined, busca?: Record<string, unknown>): Pagina {
+  const h = limpaHost(host);
+  if (HOSTS_DO_SITE.includes(h)) return 'embreve';
+  if (h === HOST_DA_PREVIA) return 'previa';
+  if (busca && busca.embreve !== undefined) return 'embreve';
+  if (busca && busca.site !== undefined) return 'previa';
+  return 'gestao';
 }
 
 export type ProdutoDoSite = {
@@ -86,6 +112,21 @@ export function fotoEhPublica(produtos: unknown, id: string): boolean {
 export function linkWhatsApp(mensagem?: string): string {
   const base = `https://wa.me/${EMPRESA.whatsapp}`;
   return mensagem ? `${base}?text=${encodeURIComponent(mensagem)}` : base;
+}
+
+/** Ficha de "empresa local" para o Google (dados estruturados schema.org). */
+export function fichaParaOGoogle() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: EMPRESA.nome,
+    description: 'Impressão 3D em Fortaleza. Peças personalizadas, chaveiros, peças técnicas e decoração em PLA, PETG e ABS/ASA, com envio para todo o Brasil.',
+    url: EMPRESA.endereco,
+    telephone: '+' + EMPRESA.whatsapp,
+    address: { '@type': 'PostalAddress', addressLocality: EMPRESA.cidade, addressRegion: EMPRESA.estado, addressCountry: 'BR' },
+    areaServed: [{ '@type': 'City', name: 'Fortaleza' }, { '@type': 'State', name: 'Ceará' }, { '@type': 'Country', name: 'Brasil' }],
+    sameAs: [`https://www.instagram.com/${EMPRESA.instagram}/`],
+  };
 }
 
 /** A mensagem do botão "Quero este" de cada peça. */

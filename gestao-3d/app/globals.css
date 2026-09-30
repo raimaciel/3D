@@ -424,3 +424,33 @@ body {
  .sp-passos,.sp-materiais{grid-template-columns:repeat(3,minmax(0,1fr))}
  .sp-rodape{grid-template-columns:1fr auto;padding:28px max(32px,calc((100vw - 1120px)/2)) 28px}
 }
+
+/* Faixa de aviso da prévia (previa.fabricando3d.com.br) */
+.sp-previa{background:#E0600B;color:#fff;text-align:center;font-size:14px;padding:9px 16px;line-height:1.5}
+.sp-previa a{color:#fff!important;text-decoration:underline!important;font-weight:700}
+
+/* ============================================================
+   Página "Em breve" (app/em-breve.tsx), em fabricando3d.com.br.
+   Rascunho aprovado pelo dono: azul-marinho, turquesa e laranja forte.
+   ============================================================ */
+.eb{position:relative;overflow:hidden;min-height:100vh;min-height:100dvh;background:#132840;color:#fff;font-family:Figtree,system-ui,sans-serif;display:grid;place-items:center;padding:40px 20px}
+.eb *{box-sizing:border-box}
+.eb-circulo{position:absolute;border-radius:50%;pointer-events:none}
+.eb-turquesa{width:min(520px,90vw);height:min(520px,90vw);right:-18%;top:-22%;background:#1CB8C4;opacity:.09}
+.eb-laranja{width:min(600px,100vw);height:min(600px,100vw);left:-24%;bottom:-30%;background:#E0600B;opacity:.09}
+.eb-centro{position:relative;z-index:1;text-align:center;max-width:620px;display:grid;justify-items:center}
+.eb-cubo{display:grid;place-items:center;width:92px;height:92px;border-radius:24px;background:#1CB8C4;color:#132840;margin-bottom:22px}
+.eb-nome{font-family:Sora,Figtree,sans-serif;font-size:44px;font-weight:700;letter-spacing:-1.5px;margin:0;color:#fff;line-height:1.1}
+.eb-nome span{color:#1CB8C4}
+.eb-selo{margin:22px 0 12px;background:#E0600B;color:#fff;border-radius:40px;padding:7px 20px;font-size:14px;font-weight:700;letter-spacing:1.5px}
+.eb-frase{font-family:Sora,Figtree,sans-serif;font-size:26px;font-weight:600;margin:0;color:#fff;line-height:1.25}
+.eb-sub{font-size:19px;color:#c5d4e2;margin:10px 0 32px}
+.eb-botoes{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;width:100%}
+.eb-botao,.eb-contorno{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:12px;padding:15px 24px;font-size:17px;font-weight:700;text-decoration:none;color:#fff!important}
+.eb-botao{background:#E0600B;transition:background .15s}
+.eb-botao:hover{background:#C45208}
+.eb-contorno{border:1.5px solid #4a6784}
+.eb-contorno:hover{border-color:#fff}
+.eb-telefone{margin-top:30px;color:#8fa6bb;font-size:15px;letter-spacing:.5px}
+@media(max-width:520px){.eb-nome{font-size:36px}.eb-frase{font-size:22px}.eb-botao,.eb-contorno{width:100%}}
+@media(min-width:760px){.eb-nome{font-size:58px}.eb-frase{font-size:30px}}
