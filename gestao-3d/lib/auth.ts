@@ -90,6 +90,27 @@ export function comparaSegura(a: string, b: string): boolean {
   return diferenca === 0;
 }
 
+/*
+ * CÓDIGO DE RECUPERAÇÃO (30/09/2026). Serve para quem esqueceu a senha, sem
+ * depender de serviço de e-mail (decisão: menos peças para o dono manter).
+ * 16 caracteres de um alfabeto sem letras que se confundem (sem I, O, 0, 1):
+ * 32 símbolos = 5 bits cada = 80 bits. Impossível de adivinhar na tentativa,
+ * então SHA-256 simples basta para guardar, como no token de sessão.
+ * Mostrado em 4 grupos: ABCD-EFGH-JKLM-NPQR.
+ */
+const ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+export function novoCodigoRecuperacao(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const letras = [...bytes].map(b => ALFABETO_CODIGO[b % 32]).join('');
+  return letras.match(/.{4}/g)!.join('-');
+}
+
+/** Aceita o código como a pessoa digitar: minúsculas, espaços, sem traços. */
+export function normalizarCodigo(v: unknown): string {
+  return String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
 /** Normaliza e-mail para comparação: espaços fora, tudo minúsculo. */
 export const normalizarEmail = (v: unknown): string => String(v ?? '').trim().toLowerCase();
 

@@ -1,6 +1,7 @@
 /* node --experimental-strip-types lib/auth.teste.ts */
 import { hashSenha, conferirSenha, senhaPrecisaRehash, novoToken, hashToken,
          comparaSegura, normalizarEmail, emailValido, problemaNaSenha,
+         novoCodigoRecuperacao, normalizarCodigo,
          ITERACOES_PADRAO } from './auth.ts';
 
 let passou = 0, falhou = 0;
@@ -77,6 +78,21 @@ titulo('5. Regra de senha');
   ok('aceita razoável', problemaNaSenha('filamento2026') === null);
   ok('recusa gigante', problemaNaSenha('a'.repeat(300)) !== null);
   ok('não quebra com tipo errado', problemaNaSenha(null as never) !== null);
+}
+
+titulo('Código de recuperação');
+{
+  const c = novoCodigoRecuperacao();
+  ok('formato ABCD-EFGH-JKLM-NPQR', /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(c), c);
+  ok('sem letras que se confundem (I, O, 0, 1)', !/[IO01]/.test(c), c);
+  const muitos = new Set(Array.from({ length: 500 }, () => novoCodigoRecuperacao()));
+  ok('500 códigos, nenhum repetido', muitos.size === 500);
+  ok('digitado em minúsculas e sem traço, vale igual', normalizarCodigo(c.toLowerCase().replace(/-/g, '')) === normalizarCodigo(c));
+  ok('espaços no meio são ignorados', normalizarCodigo('abcd efgh-jklm npqr') === 'ABCDEFGHJKLMNPQR');
+  ok('código normalizado tem 16 caracteres', normalizarCodigo(c).length === 16);
+  const h1 = await hashToken(normalizarCodigo(c)), h2 = await hashToken(normalizarCodigo(c.toLowerCase()));
+  ok('o hash guardado é o mesmo, digite como digitar', h1 === h2);
+  ok('vazio ou lixo vira texto vazio', normalizarCodigo(null) === '' && normalizarCodigo('---') === '');
 }
 
 console.log('\n' + '='.repeat(56));

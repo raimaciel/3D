@@ -157,6 +157,10 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
     setC(x => ({ ...x, power: Number(p.power) || 0, machineRate: horaDeMaquina(p) }));
   }
 
+  // Só acabamento e embalagem: material de consumo (lâmina, lixa) não vai
+  // uma quantidade por peça, então não entra aqui.
+  const insumosDaPeca = (s.supplies || []).filter(x => x.kind !== 'consumo');
+
   // Insumos da peça. O custo por unidade é copiado do cadastro AGORA: mudar o
   // preço do insumo depois não mexe em orçamento já salvo.
   function adicionarInsumo(id: string) {
@@ -336,11 +340,11 @@ export function Precificacao({ s, ocupado, salvar, enviarArquivo, abrirCadastro,
                 <button aria-label={'Tirar ' + x.name} onClick={() => mudaInsumo(i, -1)}><Trash2 size={15} /></button>
               </div>
             ))}
-            {(s.supplies || []).length ? (
+            {insumosDaPeca.length ? (
               <label className="field"><span>Adicionar insumo (quantidade por peça)</span>
                 <select className="select-trigger" value="" onChange={e => { if (e.target.value) adicionarInsumo(e.target.value); }}>
                   <option value="">Escolha o insumo</option>
-                  {(s.supplies || []).map(x => <option key={x.id} value={x.id}>{x.name} — {brl(Number(x.unitCost) || 0)} por {x.unit}</option>)}
+                  {insumosDaPeca.map(x => <option key={x.id} value={x.id}>{x.name} — {brl(Number(x.unitCost) || 0)} por {x.unit}</option>)}
                 </select>
               </label>
             ) : (

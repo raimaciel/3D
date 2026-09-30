@@ -333,6 +333,18 @@ O valor atual é **15.000**, que é baixo para PBKDF2 e é **uma concessão ao p
 
 **Lição de método:** o ambiente local não tem limite de CPU, então ele não reproduz essa classe de falha. Teste local passando não prova que o Workers aguenta.
 
+**Trocar senha e recuperar acesso (30/09/2026), pedido do dono antes de publicar.** Sem serviço de e-mail, de propósito (seria mais uma peça para manter): a recuperação é por **código de recuperação**.
+- **Trocar senha**: Configurações → Seu acesso (`app/conta.tsx`), rota `POST /api/auth/senha`. Pede a senha atual; depois de trocar, **desconecta os outros aparelhos** (`encerrarOutrasSessoes` em `lib/sessao.ts`).
+- **Código de recuperação**: gerado no mesmo painel, pedindo a senha (rota `/api/auth/codigo`: GET diz se existe e quando foi gerado; POST gera). 16 caracteres sem letras ambíguas, formato `ABCD-EFGH-JKLM-NPQR`, 80 bits; aparece **uma vez só**; o banco guarda só o SHA-256. Gerar outro invalida o anterior. Funções em `lib/auth.ts` (`novoCodigoRecuperacao`, `normalizarCodigo`), 8 testes novos (45 no arquivo).
+- **"Esqueci minha senha"** na tela de entrada (`app/acesso.tsx`), rota `POST /api/auth/recuperar`: e-mail + código + senha nova. Mesma mensagem para e-mail inexistente e código errado; usa a mesma trava de tentativas do login; o código vale **uma vez**; desconecta todos os aparelhos e entra.
+- **Lembrete na Visão geral** enquanto a pessoa não tem código.
+- A tabela `recovery_codes` é criada pelo próprio sistema no primeiro uso (`CREATE TABLE IF NOT EXISTS`, em `lib/recuperacao.ts`): **não precisa rodar SQL no painel** ao publicar.
+- Verificado ponta a ponta no sistema de teste: 14 casos, incluindo código digitado em minúsculas e sem traço, código reusado recusado, sessão antiga derrubada.
+- **A conferir depois de publicar:** trocar a senha faz dois cálculos de PBKDF2 (conferir a atual e gravar a nova), cerca de 7 ms de CPU. Cabe nos 10 ms do plano grátis, mas com pouca folga; local não mede isso (ver "O limite de CPU do Workers já mordeu").
+- **Não existe** um administrador trocar a senha de outra pessoa: não há tela de usuários ainda. Quem perder a senha **e** o código só volta mexendo direto no banco.
+
+**Ferramentas (EM ANDAMENTO, 30/09/2026).** Aprovado pelo dono: aba "Ferramentas" em Materiais, como inventário do que a empresa tem (paquímetro, maçarico...), entrando sozinha no total de Investimentos na categoria "Ferramentas"; e "Material de consumo" (lâmina, lixa, cola) com estoque, reaproveitando os insumos com `kind: 'consumo'` (fora da Precificação). **Já feito**: ações `tool`/`removeTool` e lista `tools` no servidor; `Insumos` aceita `modo="consumo"`; a Precificação filtra consumo. **Falta**: a tela `app/ferramentas.tsx`, a aba em Materiais, somar `tools` em Investimentos, e mover o "Alicate, espátula e lixas" (dado de teste) de Investimentos para Ferramentas.
+
 **Ainda não existe portal do cliente.** O papel `cliente` existe no banco, mas `exigirEquipe` barra qualquer um que não seja `admin` ou `equipe`. Abrir para cliente depende do banco relacional: com o estado todo num JSON só, não há como mostrar a ele apenas o pedido dele.
 
 ## Segurança que este projeto exige de verdade

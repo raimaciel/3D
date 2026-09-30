@@ -51,6 +51,19 @@ export async function encerrarSessao(token: string): Promise<void> {
   await banco().prepare('DELETE FROM sessions WHERE id=?').bind(await hashToken(token)).run();
 }
 
+/**
+ * Desconecta a pessoa de todos os aparelhos, menos do atual (se houver).
+ * Usado ao trocar ou recuperar a senha: se alguém estava usando a conta sem
+ * permissão, perde o acesso na hora.
+ */
+export async function encerrarOutrasSessoes(userId: string, tokenAtual?: string): Promise<void> {
+  if (tokenAtual) {
+    await banco().prepare('DELETE FROM sessions WHERE user_id=? AND id<>?').bind(userId, await hashToken(tokenAtual)).run();
+  } else {
+    await banco().prepare('DELETE FROM sessions WHERE user_id=?').bind(userId).run();
+  }
+}
+
 export async function limparSessoesVencidas(): Promise<void> {
   try { await banco().prepare('DELETE FROM sessions WHERE expires < ?').bind(new Date().toISOString()).run(); }
   catch { /* limpeza é oportunista: falhar aqui não pode derrubar o login */ }

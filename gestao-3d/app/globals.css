@@ -298,3 +298,18 @@ body {
 .inv-resumos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .inv-linha{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #edf2f6;font-size:14px;color:#3c5b70}
 .inv-linha:last-child{border-bottom:0}
+
+/* Seu acesso: trocar senha e código de recuperação (app/conta.tsx) */
+.conta .panel-heading{gap:10px}
+.conta-bloco{border-top:1px solid #edf2f6;padding-top:18px;margin-top:18px}
+.conta-bloco>b{font-size:15px;color:#203e56}
+.conta-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px 14px;align-items:end;margin-bottom:14px}
+.conta-campos .field{margin-top:10px}
+.conta-texto{font-size:13px;color:#5b778b;line-height:1.6;margin:6px 0 4px}
+.conta-codigo{background:#fff8e6;border:1px solid #f0d58a;border-radius:10px;padding:16px;margin-top:12px}
+.conta-codigo p{font-size:13px;color:#6b5213;line-height:1.5;margin-bottom:12px}
+.conta-codigo code{display:block;font-size:24px;font-weight:700;letter-spacing:2px;color:#132840;background:white;border-radius:8px;padding:12px;text-align:center;margin-bottom:12px;word-break:break-all;font-family:ui-monospace,Consolas,monospace}
+.conta-lembrete{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff8e6;border:1px solid #f0d58a;color:#6b5213;border-radius:12px;padding:12px 16px;margin-bottom:18px;font-size:14px}
+.conta-lembrete span{flex:1;min-width:200px}
+.acesso-link{display:block;margin:14px auto 0;font-size:14px}
+.acesso-nota{font-size:12px;margin-top:16px}

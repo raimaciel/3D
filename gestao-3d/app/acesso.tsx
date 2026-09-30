@@ -47,6 +47,8 @@ export default function Acesso() {
 function Entrar({ aoEntrar }: { aoEntrar: (u: Usuario) => void }) {
   const [email, setEmail] = useState(''), [senha, setSenha] = useState('');
   const [erro, setErro] = useState(''), [enviando, setEnviando] = useState(false);
+  const [esqueci, setEsqueci] = useState(false);
+  if (esqueci) return <Recuperar aoEntrar={aoEntrar} aoVoltar={() => setEsqueci(false)} emailInicial={email}/>;
 
   async function enviar(e: FormEvent) {
     e.preventDefault(); setErro(''); setEnviando(true);
@@ -72,6 +74,52 @@ function Entrar({ aoEntrar }: { aoEntrar: (u: Usuario) => void }) {
     </div>
     <button className="btn full" type="submit" disabled={enviando}>
       <LogIn size={18}/> {enviando ? 'Entrando…' : 'Entrar'}</button>
+    <button type="button" className="text-btn acesso-link" onClick={() => setEsqueci(true)}>Esqueci minha senha</button>
+  </form>;
+}
+
+/*
+ * "Esqueci minha senha": com o código de recuperação que a pessoa gerou em
+ * Configurações → Seu acesso. Não depende de e-mail (menos peças para manter).
+ */
+function Recuperar({ aoEntrar, aoVoltar, emailInicial }: { aoEntrar: (u: Usuario) => void; aoVoltar: () => void; emailInicial: string }) {
+  const [email, setEmail] = useState(emailInicial), [codigo, setCodigo] = useState('');
+  const [nova, setNova] = useState(''), [repete, setRepete] = useState('');
+  const [erro, setErro] = useState(''), [enviando, setEnviando] = useState(false);
+
+  async function enviar(e: FormEvent) {
+    e.preventDefault(); setErro('');
+    if (nova !== repete) { setErro('As duas senhas novas não são iguais.'); return }
+    setEnviando(true);
+    try {
+      const r = await fetch('/api/auth/recuperar', { method: 'POST', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, codigo, nova }) });
+      const d = await r.json() as { usuario?: Usuario; error?: string };
+      if (!r.ok || !d.usuario) { setErro(d.error || 'Não foi possível recuperar o acesso.'); return }
+      window.alert('Senha trocada. O código de recuperação que você usou não vale mais: gere um novo em Configurações → Seu acesso.');
+      aoEntrar(d.usuario);
+    } catch { setErro('Não foi possível recuperar o acesso. Verifique sua conexão.') }
+    finally { setEnviando(false) }
+  }
+
+  return <form onSubmit={enviar}>
+    <h1 className="acesso-titulo">Recuperar acesso</h1>
+    <p className="acesso-sub">Use o <b>código de recuperação</b> que você gerou e guardou. Ele tem este formato: ABCD-EFGH-JKLM-NPQR.</p>
+    {erro && <p className="acesso-erro" role="alert">{erro}</p>}
+    <div className="acesso-campos">
+      <label className="field"><span>E-mail</span>
+        <input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)}/></label>
+      <label className="field"><span>Código de recuperação</span>
+        <input required autoComplete="off" autoCapitalize="characters" spellCheck={false} value={codigo} onChange={e => setCodigo(e.target.value)}/></label>
+      <label className="field"><span>Senha nova</span>
+        <input type="password" autoComplete="new-password" required value={nova} onChange={e => setNova(e.target.value)}/>
+        <small>Pelo menos 10 caracteres, misturando letras e números.</small></label>
+      <label className="field"><span>Repita a senha nova</span>
+        <input type="password" autoComplete="new-password" required value={repete} onChange={e => setRepete(e.target.value)}/></label>
+    </div>
+    <button className="btn full" type="submit" disabled={enviando}>{enviando ? 'Trocando…' : 'Trocar senha e entrar'}</button>
+    <button type="button" className="text-btn acesso-link" onClick={aoVoltar}>Voltar para o login</button>
+    <p className="acesso-sub acesso-nota">Não tem o código? Então a senha só pode ser trocada direto no banco de dados, com ajuda técnica. Por isso é importante gerar o código e guardá-lo.</p>
   </form>;
 }
 

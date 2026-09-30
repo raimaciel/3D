@@ -104,8 +104,8 @@ export type Entity={id:string;[key:string]:any};
 export type Item={id:string;name:string;category:string;materialId:string;printerId:string;calculation:Calculation;arquivos:Arquivo[];cost:number;revenue:number;grams:number};
 export type Quote={id:string;number:number;customerId:string;customerName:string;date:string;due:string;notes:string;items:Item[];cost:number;revenue:number;status:string};
 export type Order=Quote & {quoteId:string;stage:string;printed:boolean;painted:boolean;packed:boolean;delivered:boolean;photos:string[]};
-export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];investments:Entity[];supplies:Entity[];supplyMovements:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
-export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],investments:[],supplies:[],supplyMovements:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.12,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
+export type State={customers:Entity[];suppliers:Entity[];materials:Entity[];printers:Entity[];products:Entity[];quotes:Quote[];orders:Order[];payments:Entity[];purchases:Entity[];movements:Entity[];investments:Entity[];supplies:Entity[];supplyMovements:Entity[];tools:Entity[];settings:{company:string;document:string;phone:string;email:string;address:string;logo:string;energyRate:number;maintenance:number;paintRate:number;laborRate:number;machineRate:number;};};
+export const emptyState=():State=>({customers:[],suppliers:[],materials:[],printers:[],products:[],quotes:[],orders:[],payments:[],purchases:[],movements:[],investments:[],supplies:[],supplyMovements:[],tools:[],settings:{company:'Gestão 3D',document:'',phone:'',email:'',address:'',logo:'',energyRate:1.12,maintenance:1,paintRate:2,laborRate:0,machineRate:0}});
 export const stages=['Na fila','Imprimindo','Acabamento','Embalagem','Pronto','Entregue'];
 export function stock(s:State,id:string){return s.movements.filter(x=>x.materialId===id).reduce((a,b)=>a+b.grams,0)}
 /** Estoque de um insumo, em unidades (soma das entradas e saídas). */
@@ -167,12 +167,26 @@ export function applyAction(s:State,action:any):State{
   // Insumo: argola, saquinho, caixa, ímã... contado em UNIDADES (o filamento
   // é em gramas e fica em materials). Com id, edita; sem id, cria, e a
   // quantidade inicial entra no estoque como primeira movimentação.
-  const p=z.object({name,kind:z.enum(['acabamento','embalagem']),unit:z.string().trim().min(1).max(30).default('unidade'),unitCost:num,minimum:num.default(0),notes:txt,initialQty:num.default(0)}).parse(action.data);
+  // kind "consumo" = material de consumo (lâmina, lixa, cola): tem estoque,
+  // mas não vai uma quantidade por peça, então não aparece na Precificação.
+  const p=z.object({name,kind:z.enum(['acabamento','embalagem','consumo']),unit:z.string().trim().min(1).max(30).default('unidade'),unitCost:num,minimum:num.default(0),notes:txt,initialQty:num.default(0)}).parse(action.data);
   const id=action.id?z.string().uuid().parse(action.id):uid();
   if(action.id)ref(s.supplies,id,'Insumo');
   const {initialQty,...dados}=p;
   s.supplies=[...s.supplies.filter(x=>x.id!==id),{...dados,unitCost:money(dados.unitCost),id}];
   if(!action.id&&initialQty>0)s.supplyMovements.push({id:uid(),supplyId:id,qty:initialQty,date:new Date().toISOString().slice(0,10),reason:'Cadastro inicial'});
+ }else if(action.type==='tool'){
+  // Ferramenta ou equipamento (paquímetro, maçarico, alicate...): bem que a
+  // empresa usa e dura anos (imobilizado). Entra sozinha no total de
+  // Investimentos, na categoria "Ferramentas", sem ser lançada duas vezes.
+  const p=z.object({name,category:z.string().trim().max(100).default(''),date,value:num,method:z.string().trim().max(60).default(''),bank:z.string().trim().max(100).default(''),
+   status:z.enum(['em uso','quebrada','perdida','emprestada']).default('em uso'),notes:txt}).parse(action.data);
+  const id=action.id?z.string().uuid().parse(action.id):uid();
+  if(action.id)ref(s.tools,id,'Ferramenta');
+  s.tools=[...s.tools.filter(x=>x.id!==id),{...p,value:money(p.value),id}];
+ }else if(action.type==='removeTool'){
+  const id=z.string().uuid().parse(action.id);ref(s.tools,id,'Ferramenta');
+  s.tools=s.tools.filter(x=>x.id!==id);
  }else if(action.type==='supplyMovement'){
   // Entrada (compra), perda ou ajuste. Positivo entra, negativo sai.
   const p=z.object({supplyId:z.string().uuid(),qty:z.number().finite().refine(v=>v!==0,'Informe uma quantidade diferente de zero.'),date,reason:name}).parse(action.data);

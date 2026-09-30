@@ -20,17 +20,26 @@ const dataBR = (v: string) => v ? new Date(v + 'T12:00:00').toLocaleDateString('
 const qtd = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 
 const UNIDADES = ['unidade', 'pacote', 'par', 'metro', 'rolo'];
-export const TIPOS_INSUMO = { acabamento: 'Acabamento', embalagem: 'Embalagem' } as const;
+export const TIPOS_INSUMO = { acabamento: 'Acabamento', embalagem: 'Embalagem', consumo: 'Material de consumo' } as const;
+type Tipo = keyof typeof TIPOS_INSUMO;
 
-type Cadastro = { id?: string; name: string; kind: 'acabamento' | 'embalagem'; unit: string; unitCost: number; minimum: number; initialQty: number; notes: string };
+type Cadastro = { id?: string; name: string; kind: Tipo; unit: string; unitCost: number; minimum: number; initialQty: number; notes: string };
 type Movimento = { supplyId: string; sentido: 'entrada' | 'saida'; qty: number; date: string; reason: string };
 
-export function Insumos({ s, ocupado, salvar }: { s: State; ocupado: boolean; salvar: (acao: unknown) => Promise<boolean> }) {
+/**
+ * `modo="insumos"`: argola, embalagem... (vão uma quantidade por peça).
+ * `modo="consumo"`: lâmina, lixa, cola... (acabam com o uso, mas não por peça).
+ * Os dois usam o mesmo estoque em unidades; só muda o que a tela mostra.
+ */
+export function Insumos({ s, ocupado, salvar, modo = 'insumos' }: { s: State; ocupado: boolean; salvar: (acao: unknown) => Promise<boolean>; modo?: 'insumos' | 'consumo' }) {
   const [cad, setCad] = useState<Cadastro | null>(null);
   const [mov, setMov] = useState<Movimento | null>(null);
-  const insumos = [...(s.supplies || [])].sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  const nomeDo = (id: string) => insumos.find(x => x.id === id)?.name || 'Insumo apagado';
-  const recentes = [...(s.supplyMovements || [])].reverse().slice(0, 12);
+  const consumo = modo === 'consumo';
+  const titulo = consumo ? 'Material de consumo' : 'Insumos';
+  const insumos = [...(s.supplies || [])].filter(x => (x.kind === 'consumo') === consumo).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  const ids = new Set(insumos.map(x => x.id));
+  const nomeDo = (id: string) => insumos.find(x => x.id === id)?.name || 'Item apagado';
+  const recentes = [...(s.supplyMovements || [])].filter(m => ids.has(m.supplyId)).reverse().slice(0, 12);
 
   async function gravarCadastro() {
     if (!cad) return;
@@ -49,36 +58,40 @@ export function Insumos({ s, ocupado, salvar }: { s: State; ocupado: boolean; sa
   }
 
   async function apagar(x: Entity) {
-    if (!window.confirm(`Apagar o insumo "${x.name}"? Orçamentos já feitos não mudam.`)) return;
+    if (!window.confirm(`Apagar "${x.name}"?${consumo ? '' : ' Orçamentos já feitos não mudam.'}`)) return;
     await salvar({ type: 'removeSupply', id: x.id });
   }
 
   return (
     <div className="ins">
       <div className="section-heading">
-        <h2>Insumos</h2>
+        <h2>{titulo}</h2>
         <div className="row-actions">
           <button className="btn secondary" disabled={!insumos.length}
             onClick={() => { setCad(null); setMov({ supplyId: insumos[0]?.id || '', sentido: 'entrada', qty: 0, date: hoje(), reason: 'Compra' }); }}>
             Entrada ou ajuste
           </button>
-          <button className="btn" onClick={() => { setMov(null); setCad({ name: '', kind: 'acabamento', unit: 'unidade', unitCost: 0, minimum: 0, initialQty: 0, notes: '' }); }}>
-            <Plus size={17} /> Cadastrar insumo
+          <button className="btn" onClick={() => { setMov(null); setCad({ name: '', kind: consumo ? 'consumo' : 'acabamento', unit: 'unidade', unitCost: 0, minimum: 0, initialQty: 0, notes: '' }); }}>
+            <Plus size={17} /> {consumo ? 'Cadastrar material' : 'Cadastrar insumo'}
           </button>
         </div>
       </div>
 
       {cad && (
         <div className="panel">
-          <div className="panel-heading"><h2>{cad.id ? 'Editar insumo' : 'Novo insumo'}</h2></div>
-          <p className="pz-rotulo">Tipo</p>
-          <div className="pz-chips">
-            {(Object.keys(TIPOS_INSUMO) as (keyof typeof TIPOS_INSUMO)[]).map(k => (
-              <button key={k} type="button" aria-pressed={cad.kind === k} onClick={() => setCad({ ...cad, kind: k })}>{TIPOS_INSUMO[k]}</button>
-            ))}
-          </div>
+          <div className="panel-heading"><h2>{cad.id ? `Editar ${consumo ? 'material' : 'insumo'}` : `Novo ${consumo ? 'material de consumo' : 'insumo'}`}</h2></div>
+          {!consumo && (
+            <>
+              <p className="pz-rotulo">Tipo</p>
+              <div className="pz-chips">
+                {(['acabamento', 'embalagem'] as const).map(k => (
+                  <button key={k} type="button" aria-pressed={cad.kind === k} onClick={() => setCad({ ...cad, kind: k })}>{TIPOS_INSUMO[k]}</button>
+                ))}
+              </div>
+            </>
+          )}
           <div className="inv-campos">
-            <label className="field"><span>Nome</span><input value={cad.name} placeholder="Argola de chaveiro" onChange={e => setCad({ ...cad, name: e.target.value })} /></label>
+            <label className="field"><span>Nome</span><input value={cad.name} placeholder={consumo ? 'Lâmina de estilete' : 'Argola de chaveiro'} onChange={e => setCad({ ...cad, name: e.target.value })} /></label>
             <label className="field"><span>Unidade</span>
               <select className="select-trigger" value={cad.unit} onChange={e => setCad({ ...cad, unit: e.target.value })}>
                 {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
@@ -98,7 +111,7 @@ export function Insumos({ s, ocupado, salvar }: { s: State; ocupado: boolean; sa
           {cad.id && <p className="inv-nota">Para mudar a quantidade em estoque, use "Entrada ou ajuste".</p>}
           <div className="dialog-actions">
             <button className="btn secondary" onClick={() => setCad(null)}>Cancelar</button>
-            <button className="btn" disabled={ocupado} onClick={gravarCadastro}>Salvar insumo</button>
+            <button className="btn" disabled={ocupado} onClick={gravarCadastro}>Salvar</button>
           </div>
         </div>
       )}
@@ -154,7 +167,7 @@ export function Insumos({ s, ocupado, salvar }: { s: State; ocupado: boolean; sa
           })}
         </div>
       ) : (
-        <div className="panel"><p className="inv-nota">Nenhum insumo cadastrado. Comece pela argola de chaveiro e pela embalagem que você usa.</p></div>
+        <div className="panel"><p className="inv-nota">{consumo ? 'Nenhum material de consumo cadastrado. Lâminas, lixas, cola e álcool entram aqui.' : 'Nenhum insumo cadastrado. Comece pela argola de chaveiro e pela embalagem que você usa.'}</p></div>
       )}
 
       {recentes.length > 0 && (
