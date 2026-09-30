@@ -106,6 +106,15 @@ export function novoCodigoRecuperacao(): string {
   return letras.match(/.{4}/g)!.join('-');
 }
 
+/**
+ * Senha temporária que o administrador passa para alguém da equipe (criar
+ * usuário ou redefinir senha): 12 letras/números sem ambíguos, em 3 grupos,
+ * ex. "K7QM-2WXA-PT9C". A pessoa é obrigada a trocar no primeiro acesso.
+ */
+export function senhaTemporaria(): string {
+  return novoCodigoRecuperacao().split('-').slice(0, 3).join('-');
+}
+
 /** Aceita o código como a pessoa digitar: minúsculas, espaços, sem traços. */
 export function normalizarCodigo(v: unknown): string {
   return String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');

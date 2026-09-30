@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Box, LogIn, ShieldCheck } from 'lucide-react';
 import Manager from './manager';
 
-export type Usuario = { id: string; email: string; name: string; role: string };
+export type Usuario = { id: string; email: string; name: string; role: string; trocarSenha?: boolean };
 
 /*
  * Portão do sistema. Enquanto não há sessão, nada da gestão é montado — e, mais
@@ -30,6 +30,12 @@ export default function Acesso() {
   useEffect(() => { verificar() }, []);
 
   if (carregando) return <div className="acesso-tela"><div className="acesso-card"><p className="acesso-carregando">Carregando…</p></div></div>;
+  // Senha temporária (criada ou redefinida pelo admin): troca antes de tudo.
+  if (usuario?.trocarSenha) return <div className="acesso-tela"><div className="acesso-card">
+    <div className="acesso-marca"><div className="brand-mark"><Box size={26}/></div>
+      <div><strong>GESTÃO<span>3D</span></strong><small>DA IDEIA À ENTREGA</small></div></div>
+    <TrocarSenhaTemporaria nome={usuario.name} aoConcluir={verificar}/>
+  </div></div>;
   if (usuario) return <Manager usuario={usuario} aoSair={() => { setUsuario(null); verificar() }} />;
 
   return <div className="acesso-tela"><div className="acesso-card">
@@ -94,9 +100,11 @@ function Recuperar({ aoEntrar, aoVoltar, emailInicial }: { aoEntrar: (u: Usuario
     try {
       const r = await fetch('/api/auth/recuperar', { method: 'POST', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, codigo, nova }) });
-      const d = await r.json() as { usuario?: Usuario; error?: string };
+      const d = await r.json() as { usuario?: Usuario; error?: string; usouChave?: boolean };
       if (!r.ok || !d.usuario) { setErro(d.error || 'Não foi possível recuperar o acesso.'); return }
-      window.alert('Senha trocada. O código de recuperação que você usou não vale mais: gere um novo em Configurações → Seu acesso.');
+      window.alert(d.usouChave
+        ? 'Senha trocada com a CHAVE DE EMERGÊNCIA. Agora apague essa chave no painel da Cloudflare (Workers → 3d → Settings → Variables and Secrets) e gere um código de recuperação novo em Configurações → Seu acesso.'
+        : 'Senha trocada. O código de recuperação que você usou não vale mais: gere um novo em Configurações → Seu acesso.');
       aoEntrar(d.usuario);
     } catch { setErro('Não foi possível recuperar o acesso. Verifique sua conexão.') }
     finally { setEnviando(false) }
@@ -110,7 +118,8 @@ function Recuperar({ aoEntrar, aoVoltar, emailInicial }: { aoEntrar: (u: Usuario
       <label className="field"><span>E-mail</span>
         <input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)}/></label>
       <label className="field"><span>Código de recuperação</span>
-        <input required autoComplete="off" autoCapitalize="characters" spellCheck={false} value={codigo} onChange={e => setCodigo(e.target.value)}/></label>
+        <input required autoComplete="off" autoCapitalize="characters" spellCheck={false} value={codigo} onChange={e => setCodigo(e.target.value)}/>
+        <small>Administrador sem o código: use aqui a chave de emergência cadastrada no painel da Cloudflare.</small></label>
       <label className="field"><span>Senha nova</span>
         <input type="password" autoComplete="new-password" required value={nova} onChange={e => setNova(e.target.value)}/>
         <small>Pelo menos 10 caracteres, misturando letras e números.</small></label>
@@ -120,6 +129,42 @@ function Recuperar({ aoEntrar, aoVoltar, emailInicial }: { aoEntrar: (u: Usuario
     <button className="btn full" type="submit" disabled={enviando}>{enviando ? 'Trocando…' : 'Trocar senha e entrar'}</button>
     <button type="button" className="text-btn acesso-link" onClick={aoVoltar}>Voltar para o login</button>
     <p className="acesso-sub acesso-nota">Não tem o código? Então a senha só pode ser trocada direto no banco de dados, com ajuda técnica. Por isso é importante gerar o código e guardá-lo.</p>
+  </form>;
+}
+
+/* Primeiro acesso com senha temporária: a pessoa escolhe a própria senha. */
+function TrocarSenhaTemporaria({ nome, aoConcluir }: { nome: string; aoConcluir: () => void }) {
+  const [atual, setAtual] = useState(''), [nova, setNova] = useState(''), [repete, setRepete] = useState('');
+  const [erro, setErro] = useState(''), [enviando, setEnviando] = useState(false);
+
+  async function enviar(e: FormEvent) {
+    e.preventDefault(); setErro('');
+    if (nova !== repete) { setErro('As duas senhas novas não são iguais.'); return }
+    setEnviando(true);
+    try {
+      const r = await fetch('/api/auth/senha', { method: 'POST', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ atual, nova }) });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok) { setErro(d.error || 'Não foi possível trocar a senha.'); return }
+      aoConcluir();
+    } catch { setErro('Não foi possível trocar a senha. Verifique sua conexão.') }
+    finally { setEnviando(false) }
+  }
+
+  return <form onSubmit={enviar}>
+    <h1 className="acesso-titulo">Crie a sua senha</h1>
+    <p className="acesso-sub">Olá, {nome}. Você entrou com uma <b>senha temporária</b>. Escolha agora a sua senha para continuar.</p>
+    {erro && <p className="acesso-erro" role="alert">{erro}</p>}
+    <div className="acesso-campos">
+      <label className="field"><span>Senha temporária</span>
+        <input type="password" autoComplete="current-password" required value={atual} onChange={e => setAtual(e.target.value)}/></label>
+      <label className="field"><span>Sua senha nova</span>
+        <input type="password" autoComplete="new-password" required value={nova} onChange={e => setNova(e.target.value)}/>
+        <small>Pelo menos 10 caracteres, misturando letras e números.</small></label>
+      <label className="field"><span>Repita a senha nova</span>
+        <input type="password" autoComplete="new-password" required value={repete} onChange={e => setRepete(e.target.value)}/></label>
+    </div>
+    <button className="btn full" type="submit" disabled={enviando}>{enviando ? 'Salvando…' : 'Salvar e entrar'}</button>
   </form>;
 }
 

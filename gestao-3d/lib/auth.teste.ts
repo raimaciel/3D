@@ -1,7 +1,7 @@
 /* node --experimental-strip-types lib/auth.teste.ts */
 import { hashSenha, conferirSenha, senhaPrecisaRehash, novoToken, hashToken,
          comparaSegura, normalizarEmail, emailValido, problemaNaSenha,
-         novoCodigoRecuperacao, normalizarCodigo,
+         novoCodigoRecuperacao, normalizarCodigo, senhaTemporaria,
          ITERACOES_PADRAO } from './auth.ts';
 
 let passou = 0, falhou = 0;
@@ -93,6 +93,18 @@ titulo('Código de recuperação');
   const h1 = await hashToken(normalizarCodigo(c)), h2 = await hashToken(normalizarCodigo(c.toLowerCase()));
   ok('o hash guardado é o mesmo, digite como digitar', h1 === h2);
   ok('vazio ou lixo vira texto vazio', normalizarCodigo(null) === '' && normalizarCodigo('---') === '');
+}
+
+titulo('Senha temporária (criar usuário, redefinir senha)');
+{
+  const t = senhaTemporaria();
+  ok('formato K7QM-2WXA-PT9C', /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(t), t);
+  ok('passa na regra de senha do próprio sistema', problemaNaSenha(t) === null, String(problemaNaSenha(t)));
+  let todasPassam = true;
+  for (let i = 0; i < 300; i++) if (problemaNaSenha(senhaTemporaria()) !== null) todasPassam = false;
+  ok('300 geradas, todas aceitas pela regra (nenhuma só de números)', todasPassam);
+  const h = await hashSenha(t);
+  ok('funciona como senha: grava e confere', await conferirSenha(t, h));
 }
 
 console.log('\n' + '='.repeat(56));

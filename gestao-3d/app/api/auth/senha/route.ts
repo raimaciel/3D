@@ -1,5 +1,5 @@
 import { conferirSenha, hashSenha, problemaNaSenha } from '@/lib/auth';
-import { banco, COOKIE, encerrarOutrasSessoes, exigirUsuario, lerCookie, origemInvalida } from '@/lib/sessao';
+import { banco, COOKIE, definirStatus, encerrarOutrasSessoes, exigirUsuario, lerCookie, origemInvalida } from '@/lib/sessao';
 import { conferirTrava, limparFalhas, registrarFalha } from '@/lib/limite';
 
 /*
@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     if (nova === atual) return Response.json({ error: 'A senha nova precisa ser diferente da atual.' }, { status: 400 });
 
     await banco().prepare('UPDATE users SET password=? WHERE id=?').bind(await hashSenha(nova), usuario.id).run();
+    await definirStatus(usuario.id, { mustChange: false });
     await limparFalhas(usuario.email);
     await encerrarOutrasSessoes(usuario.id, lerCookie(request, COOKIE));
     return Response.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });

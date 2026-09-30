@@ -1,5 +1,5 @@
 import { conferirSenha, hashSenha, senhaPrecisaRehash, normalizarEmail } from '@/lib/auth';
-import { banco, criarSessao, cookieDeEntrada, origemInvalida, limparSessoesVencidas } from '@/lib/sessao';
+import { banco, criarSessao, cookieDeEntrada, origemInvalida, limparSessoesVencidas, lerStatus } from '@/lib/sessao';
 import { conferirTrava, registrarFalha, limparFalhas } from '@/lib/limite';
 
 /*
@@ -36,6 +36,9 @@ export async function POST(request: Request) {
     }
 
     await limparFalhas(email);
+    // Só depois da senha certa: não conta a estranhos que o e-mail existe.
+    const status = await lerStatus(u.id);
+    if (!status.active) return Response.json({ error: 'Este acesso foi desativado. Fale com o administrador.' }, { status: 403 });
     // Custo de hash pode subir com o tempo; regrava a senha no formato atual.
     if (senhaPrecisaRehash(u.password)) {
       try { await banco().prepare('UPDATE users SET password=? WHERE id=?').bind(await hashSenha(senha), u.id).run(); }
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
 
     const token = await criarSessao(u.id);
     return Response.json(
-      { usuario: { id: u.id, email: u.email, name: u.name, role: u.role } },
+      { usuario: { id: u.id, email: u.email, name: u.name, role: u.role, trocarSenha: status.mustChange } },
       { headers: { 'Set-Cookie': cookieDeEntrada(request, token), 'Cache-Control': 'no-store' } });
   } catch (e) {
     console.error('FALHA EM /api/auth/login:', e instanceof Error ? e.message : String(e),
