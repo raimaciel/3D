@@ -473,6 +473,8 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Endereço `gestao3d.fabricando3d.com.br` no ar (30/09/2026).** O dono cadastrou como Custom Domain do Worker `3d`. **O painel mudou:** isso fica na aba **Domains** do Worker (Workers & Pages → 3d → Domains → Add Domain), não mais em Settings. Verificado: DNS responde, HTTPS com certificado válido, `teste-acesso.sh` 9 de 9. O `3d.ranbm3.workers.dev` continua ligado também.
 
+**Aconteceu em 30/09:** o dono abriu `http://gestao3d...` (sem cadeado, "Não seguro") e o login falhou com "Não foi possível entrar. Verifique sua conexão." (resposta que não chegou ou não era JSON). Pelo `https://` funcionou. Pelo curl, POST em http respondia normalmente, então a causa exata no navegador não foi isolada. Regra prática: **sempre https**. Vale considerar, no futuro, o próprio sistema redirecionar http para https, além do interruptor do painel.
+
 **Pendente, no painel (dono):** ligar **Always Use HTTPS** na zona `fabricando3d.com.br` (SSL/TLS → Edge Certificates). Em 30/09 o endereço com `http://` respondia 200 sem mandar para `https://`; o cookie de sessão só leva `Secure` em https, então um login feito em http viaja sem proteção.
 
 **Falta:** o site público em `fabricando3d.com.br` (o domínio raiz ainda não aponta para nada).
