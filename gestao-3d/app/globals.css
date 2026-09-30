@@ -341,3 +341,14 @@ body {
 .usr-dif-cab{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b1}
 .conta-primeiro{border-top:0;margin-top:0;padding-top:0}
 .conta-pedido{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#fff8e6;border:1px solid #f0d58a;border-radius:10px;padding:10px 14px;font-size:13px;color:#6b5213;margin:10px 0}
+/* Ferramentas (app/ferramentas.tsx) */
+.ferr .metrics{margin-bottom:18px}
+.ferr-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #edf2f6}
+.ferr-item:last-child{border-bottom:0}
+.ferr-item .material-icon{padding:8px}
+.ferr-item b{display:block;font-size:15px;color:#23455e}
+.ferr-item small{display:block;font-size:12px;color:#7d91a2;margin-top:2px}
+.ferr-item strong{font-size:15px;color:#203e56;font-variant-numeric:tabular-nums}
+.ferr-alerta{background:#fde8e6!important;color:#b3261e!important}
+.ferr .ins{margin-top:28px}
+@media(max-width:600px){.ferr-item{grid-template-columns:auto minmax(0,1fr) auto;row-gap:6px}.ferr-item>span{grid-column:2}.ferr-item .inv-acoes{grid-column:3;grid-row:1/3}}

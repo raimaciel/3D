@@ -53,7 +53,15 @@ export function Investimentos({ s, ocupado, salvar }: {
   const [filtroBanco, setFiltroBanco] = useState<string | null>(null);
   const campo = <K extends keyof Formulario>(k: K, v: Formulario[K]) => setForm(f => f && ({ ...f, [k]: v }));
 
-  const todos = [...(s.investments || [])].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  // Ferramentas (Materiais → Ferramentas) entram aqui sozinhas, como compra à
+  // vista na categoria "Ferramentas". São só para somar e consultar: editar e
+  // apagar é lá, para não haver dois lugares mexendo na mesma coisa.
+  const ferramentas: Entity[] = (s.tools || []).map(t => ({
+    id: 'ferramenta-' + t.id, deFerramenta: true, description: t.name, category: 'Ferramentas',
+    amount: Number(t.value) || 0, method: t.method || '', bank: t.bank || '', date: t.date, notes: t.notes || '',
+    parcelado: false,
+  }));
+  const todos = [...(s.investments || []), ...ferramentas].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const nomeBanco = (x: Entity) => String(x.bank || 'Sem banco informado');
   const lista = filtroBanco ? todos.filter(x => nomeBanco(x) === filtroBanco) : todos;
 
@@ -202,6 +210,7 @@ export function Investimentos({ s, ocupado, salvar }: {
                   <b>{x.description}</b>
                   <small>{dataBR(x.date)} · {x.category} · {x.method}{x.bank ? ' · ' + x.bank : ''}</small>
                   <span className="inv-tags">
+                    {x.deFerramenta && <span className="inv-tag aberta">Do inventário de ferramentas</span>}
                     {sit.quitado
                       ? <span className="inv-tag pago">{x.parcelado ? `Quitado · ${x.installments} parcelas pagas` : 'Pago à vista'}</span>
                       : <span className="inv-tag pagando">{sit.pagas} de {sit.total} parcelas pagas</span>}
@@ -244,10 +253,12 @@ export function Investimentos({ s, ocupado, salvar }: {
                     </div>
                   )}
 
-                  <div className="inv-acoes">
-                    <button className="btn secondary small" onClick={() => editar(x)}><Pencil size={15} /> Editar</button>
-                    <button className="btn secondary small" onClick={() => apagar(x)} disabled={ocupado}><Trash2 size={15} /> Apagar</button>
-                  </div>
+                  {x.deFerramenta
+                    ? <p className="inv-nota">Esta é uma ferramenta do inventário. Para editar ou apagar, vá em <b>Materiais → Ferramentas</b>.</p>
+                    : <div className="inv-acoes">
+                        <button className="btn secondary small" onClick={() => editar(x)}><Pencil size={15} /> Editar</button>
+                        <button className="btn secondary small" onClick={() => apagar(x)} disabled={ocupado}><Trash2 size={15} /> Apagar</button>
+                      </div>}
                 </div>
               )}
             </div>
