@@ -469,6 +469,8 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Armadilha no Windows:** `pnpm build` falha com `EPERM ... dist` se o servidor local (`pnpm start`) estiver rodando, porque ele segura os arquivos da pasta `dist`. Desligue o servidor antes de construir.
 
+**Publicado de novo em 30/09/2026:** o ramo `claude/computador-windows` foi juntado à `main` (avanço direto, 17 commits, `c50be42..d3a6d37`) com autorização do dono. Workers Builds passou (com os 6 conjuntos de testes); `teste-acesso.sh` contra o ar: 9 de 9; rotas novas (`/api/auth/codigo`, `/api/usuarios`, `/api/perfil`) respondem 401 sem login. O banco de produção é separado do de teste: nada dos dados de teste foi junto. As tabelas novas (`user_status`, `user_perms`, `user_profile`, `profile_requests`, `recovery_codes`) nascem sozinhas no primeiro uso.
+
 **Falta:** o domínio. `fabricando3d.com.br` não tem endereço no DNS (em 28/09/2026 o `nslookup` não devolve nenhum IP).
 
 **Recursos reais da conta, criados em 26/09/2026 e já gravados no `vite.config.ts`:** Worker `3d`, banco D1 `fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e bucket R2 `fabricando3d-arquivos`. O id do banco não é segredo — é só um identificador, e ninguém alcança o banco sem estar autenticado na conta. Deixá-lo no repositório poupa o dono de configurar variável de build no painel. O `.env` sobrepõe, para publicar noutro lugar.
