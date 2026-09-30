@@ -323,3 +323,21 @@ body {
 .usr-acoes{display:flex;flex-wrap:wrap;gap:8px}
 .usr-passos{font-size:13px;color:#3c5b70;line-height:1.7;padding-left:20px;margin:10px 0 0}
 .usr .panel-heading{gap:10px}
+/* Permissões e pedidos de perfil (app/usuarios.tsx, app/conta.tsx) */
+.usr-perm-resumo{display:block;font-size:12px;color:#5b778b;margin-top:8px;text-align:left}
+.usr-perms{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px 12px;background:#f7fafc;border-radius:10px;padding:8px 12px 12px;margin-top:8px}
+.usr-perms .pz-check{margin-top:8px}
+.usr-perms small{grid-column:1/-1}
+.usr-pedidos .panel-heading{gap:10px;flex-wrap:wrap}
+.usr-pedido{border-top:1px solid #edf2f6;padding:14px 0}
+.usr-pedido>b{font-size:15px;color:#23455e;margin-right:8px}
+.usr-pedido>small{font-size:12px;color:#7d91a2}
+.usr-difs{margin:10px 0}
+.usr-dif{display:grid;grid-template-columns:120px minmax(0,1fr) minmax(0,1fr);gap:10px;padding:6px 0;font-size:13px;color:#5b778b;border-bottom:1px solid #f1f5f8;overflow-wrap:anywhere}
+.usr-dif s{color:#9aa9b5}
+.usr-dif b{font-weight:500;color:#5b778b}
+.usr-dif.mudou b{font-weight:700;color:#08707e}
+.usr-dif:not(.mudou) s{text-decoration:none}
+.usr-dif-cab{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8aa0b1}
+.conta-primeiro{border-top:0;margin-top:0;padding-top:0}
+.conta-pedido{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#fff8e6;border:1px solid #f0d58a;border-radius:10px;padding:10px 14px;font-size:13px;color:#6b5213;margin:10px 0}

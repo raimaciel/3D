@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Box, LogIn, ShieldCheck } from 'lucide-react';
 import Manager from './manager';
 
-export type Usuario = { id: string; email: string; name: string; role: string; trocarSenha?: boolean };
+export type Usuario = { id: string; email: string; name: string; role: string; trocarSenha?: boolean; modulos?: string[] };
 
 /*
  * Portão do sistema. Enquanto não há sessão, nada da gestão é montado — e, mais
@@ -45,8 +45,10 @@ export default function Acesso() {
       ? <><p className="acesso-erro" role="alert">{indisponivel}</p>
           <button className="btn full" onClick={verificar}>Tentar de novo</button></>
       : precisaConfigurar
-        ? <Configurar aoEntrar={setUsuario}/>
-        : <Entrar aoEntrar={setUsuario}/>}
+        // Depois de entrar, busca de novo "quem sou eu": é de lá que vêm as
+        // permissões (módulos) da pessoa.
+        ? <Configurar aoEntrar={() => verificar()}/>
+        : <Entrar aoEntrar={() => verificar()}/>}
   </div></div>;
 }
 
@@ -86,7 +88,7 @@ function Entrar({ aoEntrar }: { aoEntrar: (u: Usuario) => void }) {
 
 /*
  * "Esqueci minha senha": com o código de recuperação que a pessoa gerou em
- * Configurações → Seu acesso. Não depende de e-mail (menos peças para manter).
+ * "Meu acesso". Não depende de e-mail (menos peças para manter).
  */
 function Recuperar({ aoEntrar, aoVoltar, emailInicial }: { aoEntrar: (u: Usuario) => void; aoVoltar: () => void; emailInicial: string }) {
   const [email, setEmail] = useState(emailInicial), [codigo, setCodigo] = useState('');
@@ -103,8 +105,8 @@ function Recuperar({ aoEntrar, aoVoltar, emailInicial }: { aoEntrar: (u: Usuario
       const d = await r.json() as { usuario?: Usuario; error?: string; usouChave?: boolean };
       if (!r.ok || !d.usuario) { setErro(d.error || 'Não foi possível recuperar o acesso.'); return }
       window.alert(d.usouChave
-        ? 'Senha trocada com a CHAVE DE EMERGÊNCIA. Agora apague essa chave no painel da Cloudflare (Workers → 3d → Settings → Variables and Secrets) e gere um código de recuperação novo em Configurações → Seu acesso.'
-        : 'Senha trocada. O código de recuperação que você usou não vale mais: gere um novo em Configurações → Seu acesso.');
+        ? 'Senha trocada com a CHAVE DE EMERGÊNCIA. Agora apague essa chave no painel da Cloudflare (Workers → 3d → Settings → Variables and Secrets) e gere um código de recuperação novo em Meu acesso.'
+        : 'Senha trocada. O código de recuperação que você usou não vale mais: gere um novo em Meu acesso.');
       aoEntrar(d.usuario);
     } catch { setErro('Não foi possível recuperar o acesso. Verifique sua conexão.') }
     finally { setEnviando(false) }

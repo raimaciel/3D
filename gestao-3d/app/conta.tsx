@@ -1,7 +1,8 @@
 'use client';
 /*
  * "Seu acesso" (30/09/2026): trocar a senha e gerar o código de recuperação.
- * Fica em Configurações. O lembrete da Visão geral também mora aqui.
+ * Fica no item "Meu acesso" do menu, que todo mundo vê (o funcionário
+ * normalmente não tem Configurações). O lembrete da Visão geral também mora aqui.
  *
  * O código de recuperação é a saída para quem esquece a senha, sem depender
  * de e-mail. Ele aparece UMA VEZ: o banco guarda só o hash.
@@ -28,7 +29,59 @@ export function LembreteCodigo({ irPara }: { irPara: (pagina: string) => void })
     <div className="conta-lembrete" role="status">
       <ShieldAlert size={18} />
       <span><b>Gere seu código de recuperação.</b> Sem ele, se você esquecer a senha, não há como entrar de novo.</span>
-      <button className="btn small" onClick={() => irPara('Configurações')}>Gerar agora</button>
+      <button className="btn small" onClick={() => irPara('Meu acesso')}>Gerar agora</button>
+    </div>
+  );
+}
+
+/*
+ * Meu perfil: a pessoa pede para mudar nome, telefone e e-mail. Não vale na
+ * hora: vira um pedido que o administrador aprova em Usuários.
+ */
+type Perfil = { nome: string; email: string; telefone: string; pedido: { name: string; phone: string; email: string; created: string } | null };
+
+function MeuPerfil() {
+  const [p, setP] = useState<Perfil | null>(null);
+  const [form, setForm] = useState({ nome: '', telefone: '', email: '' });
+  const [ocupado, setOcupado] = useState(false);
+
+  async function carregar() {
+    try {
+      const r = await fetch('/api/perfil', { cache: 'no-store' });
+      const d = await r.json() as Perfil;
+      if (r.ok) { setP(d); setForm({ nome: d.nome, telefone: d.telefone, email: d.email }); }
+    } catch { /* o painel mostra só o resto */ }
+  }
+  useEffect(() => { carregar(); }, []);
+
+  async function enviar(e: FormEvent, corpo: Record<string, unknown>, ok: string) {
+    e.preventDefault(); setOcupado(true);
+    try {
+      const r = await fetch('/api/perfil', { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+      const d = await r.json().catch(() => ({})) as { error?: string };
+      if (!r.ok) throw new Error(d.error || 'Não foi possível enviar.');
+      toast.success(ok); await carregar();
+    } catch (x) { toast.error(x instanceof Error ? x.message : String(x)); }
+    finally { setOcupado(false); }
+  }
+
+  if (!p) return null;
+  return (
+    <div className="conta-bloco conta-primeiro">
+      <b>Meu perfil</b>
+      <p className="conta-texto">Mudanças aqui viram um <b>pedido</b>: só valem depois que o administrador aprovar.</p>
+      {p.pedido && (
+        <div className="conta-pedido">
+          <span><b>Pedido esperando aprovação</b> (enviado em {dataBR(p.pedido.created)}): {p.pedido.name} · {p.pedido.phone || 'sem telefone'} · {p.pedido.email}</span>
+          <button className="text-btn" disabled={ocupado} onClick={e => enviar(e, { cancelar: true }, 'Pedido cancelado')}>Cancelar pedido</button>
+        </div>
+      )}
+      <form className="conta-campos" onSubmit={e => enviar(e, form, 'Pedido enviado ao administrador')}>
+        <label className="field"><span>Nome</span><input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></label>
+        <label className="field"><span>Telefone / WhatsApp</span><input inputMode="tel" placeholder="(85) 99999-9999" value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} /></label>
+        <label className="field"><span>E-mail (é o seu login)</span><input type="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label>
+        <button className="btn secondary" type="submit" disabled={ocupado}>Pedir mudança</button>
+      </form>
     </div>
   );
 }
@@ -81,6 +134,8 @@ export function SeuAcesso() {
   return (
     <div className="panel conta">
       <div className="panel-heading"><KeyRound size={20} /><h2>Seu acesso</h2></div>
+
+      <MeuPerfil />
 
       <form onSubmit={trocarSenha} className="conta-bloco">
         <b>Trocar senha</b>

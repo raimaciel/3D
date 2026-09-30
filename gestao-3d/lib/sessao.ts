@@ -7,13 +7,15 @@
  */
 import { env } from 'cloudflare:workers';
 import { hashToken, novoToken } from './auth.ts';
+import { modulosDoUsuario } from './permissoes.ts';
 
 export const COOKIE = 'gestao3d_sessao';
 const DIAS = 30;
 const RENOVA_QUANDO_FALTAM_DIAS = 7;
 
-/** `trocarSenha`: entrou com senha temporária e ainda não trocou. */
-export type Usuario = { id: string; email: string; name: string; role: string; trocarSenha?: boolean };
+/** `trocarSenha`: entrou com senha temporária e ainda não trocou.
+ *  `modulos`: o que a pessoa acessa (lib/permissoes.ts). */
+export type Usuario = { id: string; email: string; name: string; role: string; trocarSenha?: boolean; modulos?: string[] };
 
 /*
  * Situação de cada usuário (30/09/2026): ativo ou desativado, e se precisa
@@ -25,9 +27,15 @@ export type Usuario = { id: string; email: string; name: string; role: string; t
 let tabelaStatusPronta = false;
 export async function garantirTabelaStatus(): Promise<void> {
   if (tabelaStatusPronta) return;
-  await banco().prepare(
-    'CREATE TABLE IF NOT EXISTS user_status (user_id TEXT PRIMARY KEY NOT NULL, active INTEGER NOT NULL DEFAULT 1, must_change INTEGER NOT NULL DEFAULT 0)'
-  ).run();
+  await banco().batch([
+    banco().prepare('CREATE TABLE IF NOT EXISTS user_status (user_id TEXT PRIMARY KEY NOT NULL, active INTEGER NOT NULL DEFAULT 1, must_change INTEGER NOT NULL DEFAULT 0)'),
+    // Módulos que a pessoa acessa, em JSON. Sem linha = padrão (lib/permissoes.ts).
+    banco().prepare('CREATE TABLE IF NOT EXISTS user_perms (user_id TEXT PRIMARY KEY NOT NULL, modules TEXT NOT NULL)'),
+    // Telefone / WhatsApp da pessoa.
+    banco().prepare('CREATE TABLE IF NOT EXISTS user_profile (user_id TEXT PRIMARY KEY NOT NULL, phone TEXT NOT NULL DEFAULT \'\')'),
+    // Pedido de mudança no próprio cadastro, esperando o admin aprovar. Um por pessoa.
+    banco().prepare('CREATE TABLE IF NOT EXISTS profile_requests (user_id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT NOT NULL, created TEXT NOT NULL)'),
+  ]);
   tabelaStatusPronta = true;
 }
 
@@ -113,11 +121,12 @@ export async function usuarioDaRequisicao(request: Request): Promise<Usuario | n
     const id = await hashToken(token);
     await garantirTabelaStatus();
     const linha = await banco().prepare(
-      `SELECT s.id AS sid, s.expires, u.id, u.email, u.name, u.role, st.active, st.must_change
+      `SELECT s.id AS sid, s.expires, u.id, u.email, u.name, u.role, st.active, st.must_change, p.modules
          FROM sessions s JOIN users u ON u.id = s.user_id
          LEFT JOIN user_status st ON st.user_id = u.id
+         LEFT JOIN user_perms p ON p.user_id = u.id
         WHERE s.id = ?`
-    ).bind(id).first<{ sid: string; expires: string; id: string; email: string; name: string; role: string; active: number | null; must_change: number | null }>();
+    ).bind(id).first<{ sid: string; expires: string; id: string; email: string; name: string; role: string; active: number | null; must_change: number | null; modules: string | null }>();
     if (!linha) return null;
     // Usuário desativado perde o acesso na hora, mesmo com sessão aberta.
     if (linha.active === 0) {
@@ -135,7 +144,10 @@ export async function usuarioDaRequisicao(request: Request): Promise<Usuario | n
       await banco().prepare('UPDATE sessions SET expires=? WHERE id=?')
         .bind(new Date(Date.now() + DIAS * 86400_000).toISOString(), id).run();
     }
-    return { id: linha.id, email: linha.email, name: linha.name, role: linha.role, trocarSenha: linha.must_change === 1 };
+    let salvos: unknown;
+    try { salvos = linha.modules ? JSON.parse(linha.modules) : undefined; } catch { salvos = []; }
+    return { id: linha.id, email: linha.email, name: linha.name, role: linha.role,
+      trocarSenha: linha.must_change === 1, modulos: modulosDoUsuario(linha.role, salvos) };
   } catch (e) { console.error('FALHA ao ler a sessao:', e instanceof Error ? e.message : String(e)); return null; }
 }
 

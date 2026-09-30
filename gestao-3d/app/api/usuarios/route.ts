@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { emailValido, hashSenha, normalizarCodigo, normalizarEmail, senhaTemporaria } from '@/lib/auth';
 import { banco, definirStatus, encerrarOutrasSessoes, exigirAdmin, garantirTabelaStatus, origemInvalida } from '@/lib/sessao';
+import { MODULOS, modulosDoUsuario } from '@/lib/permissoes';
 
 /*
  * Usuários (30/09/2026). Só o ADMINISTRADOR usa.
@@ -14,18 +15,26 @@ import { banco, definirStatus, encerrarOutrasSessoes, exigirAdmin, garantirTabel
  *   a pessoa é obrigada a trocá-la no primeiro acesso.
  * - Redefinir ou desativar desconecta a pessoa de todos os aparelhos.
  */
-type Linha = { id: string; email: string; name: string; role: string; created: string; active: number | null; must_change: number | null };
+type Linha = { id: string; email: string; name: string; role: string; created: string; active: number | null; must_change: number | null;
+  modules: string | null; phone: string | null; req_name: string | null; req_phone: string | null; req_email: string | null; req_created: string | null };
 const PAPEIS = ['admin', 'equipe'] as const;
 const erro = (msg: string, status = 400) => Response.json({ error: msg }, { status, headers: { 'Cache-Control': 'no-store' } });
 
 async function listar(): Promise<Linha[]> {
   await garantirTabelaStatus();
   const r = await banco().prepare(
-    `SELECT u.id,u.email,u.name,u.role,u.created,st.active,st.must_change
-       FROM users u LEFT JOIN user_status st ON st.user_id=u.id ORDER BY u.created`
+    `SELECT u.id,u.email,u.name,u.role,u.created,st.active,st.must_change,p.modules,pf.phone,
+            rq.name AS req_name, rq.phone AS req_phone, rq.email AS req_email, rq.created AS req_created
+       FROM users u
+       LEFT JOIN user_status st ON st.user_id=u.id
+       LEFT JOIN user_perms p ON p.user_id=u.id
+       LEFT JOIN user_profile pf ON pf.user_id=u.id
+       LEFT JOIN profile_requests rq ON rq.user_id=u.id
+      ORDER BY u.created`
   ).all<Linha>();
   return r.results || [];
 }
+const salvos = (l: Linha): unknown => { try { return l.modules ? JSON.parse(l.modules) : undefined; } catch { return []; } };
 const ativo = (l: Linha) => l.active !== 0;
 const adminsAtivos = (lista: Linha[]) => lista.filter(l => l.role === 'admin' && ativo(l)).length;
 
@@ -36,7 +45,10 @@ export async function GET(request: Request) {
     const chave = normalizarCodigo((env as unknown as { CHAVE_EMERGENCIA?: string }).CHAVE_EMERGENCIA || '');
     return Response.json({
       usuarios: (await listar()).map(l => ({ id: l.id, email: l.email, name: l.name, role: l.role, created: l.created,
-        ativo: ativo(l), trocarSenha: l.must_change === 1, voce: l.id === admin.id })),
+        ativo: ativo(l), trocarSenha: l.must_change === 1, voce: l.id === admin.id,
+        telefone: l.phone || '', modulos: modulosDoUsuario(l.role, salvos(l)),
+        pedido: l.req_created ? { nome: l.req_name, telefone: l.req_phone, email: l.req_email, criadoEm: l.req_created } : null })),
+      modulosDisponiveis: MODULOS,
       chaveEmergencia: chave.length >= 16,
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
@@ -95,6 +107,33 @@ export async function POST(request: Request) {
         return erro('Este é o único administrador ativo. Não dá para desativá-lo.');
       await definirStatus(alvo!.id, { active: querAtivo });
       if (!querAtivo) await encerrarOutrasSessoes(alvo!.id);
+      return Response.json({ ok: true });
+    }
+
+    if (acao === 'permissoes') {
+      // Admin tem tudo sempre; permissões só valem para quem é Equipe.
+      if (alvo!.role === 'admin') return erro('O administrador acessa tudo. Para limitar, mude o papel para Equipe.');
+      if (!Array.isArray(c.modulos)) return erro('Lista de módulos inválida.');
+      const modulos = MODULOS.filter(m => (c.modulos as unknown[]).includes(m));
+      await banco().prepare('INSERT INTO user_perms (user_id,modules) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET modules=excluded.modules')
+        .bind(alvo!.id, JSON.stringify(modulos)).run();
+      return Response.json({ ok: true });
+    }
+
+    if (acao === 'aprovarPerfil' || acao === 'recusarPerfil') {
+      if (!alvo!.req_created) return erro('Não há pedido de mudança para esta pessoa.');
+      if (acao === 'aprovarPerfil') {
+        const email = normalizarEmail(alvo!.req_email);
+        if (!emailValido(email)) return erro('O e-mail pedido é inválido. Recuse o pedido.');
+        if (lista.some(l => l.id !== alvo!.id && l.email === email)) return erro('O e-mail pedido já é usado por outra pessoa. Recuse o pedido.');
+        await banco().batch([
+          banco().prepare('UPDATE users SET name=?, email=? WHERE id=?').bind(String(alvo!.req_name), email, alvo!.id),
+          banco().prepare('INSERT INTO user_profile (user_id,phone) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET phone=excluded.phone').bind(alvo!.id, String(alvo!.req_phone || '')),
+          banco().prepare('DELETE FROM profile_requests WHERE user_id=?').bind(alvo!.id),
+        ]);
+      } else {
+        await banco().prepare('DELETE FROM profile_requests WHERE user_id=?').bind(alvo!.id).run();
+      }
       return Response.json({ ok: true });
     }
 

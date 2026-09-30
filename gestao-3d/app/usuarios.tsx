@@ -9,12 +9,16 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Copy, KeyRound, Pencil, Plus, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 
-type U = { id: string; email: string; name: string; role: string; created: string; ativo: boolean; trocarSenha: boolean; voce: boolean };
+type Pedido = { nome: string; telefone: string; email: string; criadoEm: string };
+type U = { id: string; email: string; name: string; role: string; created: string; ativo: boolean; trocarSenha: boolean; voce: boolean;
+  telefone: string; modulos: string[]; pedido: Pedido | null };
 const PAPEL = { admin: 'Administrador', equipe: 'Equipe' } as Record<string, string>;
 
 export function Usuarios() {
   const [lista, setLista] = useState<U[]>([]);
   const [chave, setChave] = useState(false);
+  const [disponiveis, setDisponiveis] = useState<string[]>([]);
+  const [abertoPerm, setAbertoPerm] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [form, setForm] = useState<{ id?: string; nome: string; email: string; papel: string } | null>(null);
   const [senhaGerada, setSenhaGerada] = useState<{ email: string; senha: string } | null>(null);
@@ -24,9 +28,9 @@ export function Usuarios() {
     setCarregando(true);
     try {
       const r = await fetch('/api/usuarios', { cache: 'no-store' });
-      const d = await r.json() as { usuarios: U[]; chaveEmergencia: boolean; error?: string };
+      const d = await r.json() as { usuarios: U[]; chaveEmergencia: boolean; modulosDisponiveis: string[]; error?: string };
       if (!r.ok) throw new Error(d.error);
-      setLista(d.usuarios); setChave(d.chaveEmergencia);
+      setLista(d.usuarios); setChave(d.chaveEmergencia); setDisponiveis(d.modulosDisponiveis || []);
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Não foi possível carregar os usuários.'); }
     finally { setCarregando(false); }
   }
@@ -64,6 +68,13 @@ export function Usuarios() {
     acao({ acao: 'ativar', id: u.id, ativo: !u.ativo }).then(ok => ok && toast.success(u.ativo ? 'Acesso desativado' : 'Acesso reativado'));
   }
 
+  function alternarModulo(u: U, m: string) {
+    const novos = u.modulos.includes(m) ? u.modulos.filter(x => x !== m) : [...u.modulos, m];
+    acao({ acao: 'permissoes', id: u.id, modulos: novos });
+  }
+
+  const pendentes = lista.filter(u => u.pedido);
+
   async function copiar(texto: string) {
     try { await navigator.clipboard.writeText(texto); toast.success('Copiado'); }
     catch { toast.error('Não foi possível copiar. Anote à mão.'); }
@@ -84,6 +95,34 @@ export function Usuarios() {
             <button className="btn secondary small" onClick={() => copiar(`Acesso ao Gestão 3D\nEndereço: ${location.origin}\nE-mail: ${senhaGerada.email}\nSenha temporária: ${senhaGerada.senha}`)}><Copy size={15} /> Copiar com instruções</button>
             <button className="btn small" onClick={() => setSenhaGerada(null)}>Já passei</button>
           </div>
+        </div>
+      )}
+
+      {pendentes.length > 0 && (
+        <div className="panel usr-pedidos">
+          <div className="panel-heading"><h2>Pedidos de mudança no perfil</h2><span className="venc-tag hoje">{pendentes.length} esperando você</span></div>
+          {pendentes.map(u => {
+            const p = u.pedido!;
+            const linha = (rotulo: string, antes: string, depois: string) => (
+              <div className={'usr-dif' + (antes !== depois ? ' mudou' : '')}><span>{rotulo}</span><s>{antes || '—'}</s><b>{depois || '—'}</b></div>
+            );
+            return (
+              <div className="usr-pedido" key={u.id}>
+                <b>{u.name}</b><small>pediu em {new Date(p.criadoEm).toLocaleDateString('pt-BR')}</small>
+                <div className="usr-difs">
+                  <div className="usr-dif usr-dif-cab"><span></span><span>Antes</span><span>Depois</span></div>
+                  {linha('Nome', u.name, p.nome)}
+                  {linha('Telefone', u.telefone, p.telefone)}
+                  {linha('E-mail (login)', u.email, p.email)}
+                </div>
+                {p.email !== u.email && <p className="inv-nota">Atenção: aprovar muda o <b>e-mail de login</b> dessa pessoa. Ela passa a entrar com {p.email}.</p>}
+                <div className="row-actions">
+                  <button className="btn small" disabled={ocupado} onClick={() => acao({ acao: 'aprovarPerfil', id: u.id }).then(ok => ok && toast.success('Mudança aprovada'))}>Aprovar</button>
+                  <button className="btn secondary small" disabled={ocupado} onClick={() => acao({ acao: 'recusarPerfil', id: u.id }).then(ok => ok && toast.success('Pedido recusado'))}>Recusar</button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -113,12 +152,26 @@ export function Usuarios() {
           <div className="usr-item" key={u.id}>
             <div>
               <b>{u.name}{u.voce && <span className="inv-tag aberta"> você</span>}</b>
-              <small>{u.email}</small>
+              <small>{u.email}{u.telefone ? ' · ' + u.telefone : ''}</small>
               <span className="inv-tags">
                 <span className={'inv-tag ' + (u.role === 'admin' ? 'pagando' : 'aberta')}>{PAPEL[u.role] || u.role}</span>
                 {!u.ativo && <span className="venc-tag atrasada">Desativado</span>}
                 {u.ativo && u.trocarSenha && <span className="venc-tag hoje">Ainda não trocou a senha temporária</span>}
+                {u.pedido && <span className="venc-tag hoje">Pediu mudança no perfil</span>}
               </span>
+              {u.role === 'admin'
+                ? <small className="usr-perm-resumo">Acessa tudo</small>
+                : <button className="text-btn usr-perm-resumo" onClick={() => setAbertoPerm(abertoPerm === u.id ? null : u.id)}>
+                    Acessa: {u.modulos.length ? u.modulos.join(', ') : 'nada'} · {abertoPerm === u.id ? 'fechar' : 'mudar'}
+                  </button>}
+              {abertoPerm === u.id && u.role !== 'admin' && (
+                <div className="usr-perms">
+                  {disponiveis.map(m => (
+                    <label key={m} className="pz-check"><input type="checkbox" disabled={ocupado} checked={u.modulos.includes(m)} onChange={() => alternarModulo(u, m)} /> {m}</label>
+                  ))}
+                  <small className="inv-nota">Visão geral e Meu acesso são de todos (a Visão geral sem valores de dinheiro para quem não tem Financeiro). Usuários é só do administrador.</small>
+                </div>
+              )}
             </div>
             <div className="usr-acoes">
               <button className="btn secondary small" disabled={ocupado} onClick={() => { setSenhaGerada(null); setForm({ id: u.id, nome: u.name, email: u.email, papel: u.role }); }}><Pencil size={14} /> Editar</button>
