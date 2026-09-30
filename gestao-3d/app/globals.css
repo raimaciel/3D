@@ -352,3 +352,75 @@ body {
 .ferr-alerta{background:#fde8e6!important;color:#b3261e!important}
 .ferr .ins{margin-top:28px}
 @media(max-width:600px){.ferr-item{grid-template-columns:auto minmax(0,1fr) auto;row-gap:6px}.ferr-item>span{grid-column:2}.ferr-item .inv-acoes{grid-column:3;grid-row:1/3}}
+
+/* ============================================================
+   Site público da Fabricando 3D (app/site-publico.tsx), 30/09/2026.
+   Marca: azul-marinho #132840, turquesa #1CB8C4, fundo #EEF2F6,
+   LARANJA FORTE #E0600B nos botões (escolha do dono), Sora e Figtree.
+   Celular primeiro; tudo com o prefixo .sp para não mexer na gestão.
+   ============================================================ */
+.sp{--sp-azul:#132840;--sp-turquesa:#1CB8C4;--sp-fundo:#EEF2F6;--sp-laranja:#E0600B;--sp-laranja-escuro:#C45208;--sp-texto:#132840;--sp-suave:#5b7389;
+  background:#fff;color:var(--sp-texto);font-family:Figtree,system-ui,sans-serif;font-size:16px;line-height:1.6;min-height:100vh}
+.sp *{box-sizing:border-box}
+.sp h1,.sp h2,.sp h3{font-family:Sora,Figtree,system-ui,sans-serif;letter-spacing:-.4px;margin:0}
+.sp p{margin:0}
+.sp a{color:inherit;text-decoration:none}
+.sp-topo{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;background:var(--sp-azul);color:#fff}
+.sp-logo{display:flex;align-items:center;gap:9px;font-family:Sora,sans-serif;font-weight:700;font-size:17px}
+.sp-logo span{display:grid;place-items:center;background:var(--sp-turquesa);color:var(--sp-azul);border-radius:9px;padding:6px}
+.sp-menu{display:none;gap:22px;font-size:15px;color:#c5d4e2}
+.sp-menu a:hover{color:#fff}
+.sp-botao{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--sp-laranja);color:#fff!important;font-weight:700;border-radius:10px;padding:13px 20px;font-size:16px;transition:background .15s}
+.sp-botao:hover{background:var(--sp-laranja-escuro)}
+.sp-pequeno{padding:9px 14px;font-size:14px}
+.sp-botao-contorno{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #4a6784;color:#fff;border-radius:10px;padding:12px 20px;font-weight:600}
+.sp-botao-contorno:hover{border-color:#fff}
+.sp-escuro{border-color:#c7d3de;color:var(--sp-azul)!important}
+.sp-escuro:hover{border-color:var(--sp-azul)}
+.sp-hero{background:var(--sp-azul);color:#fff;padding:40px 20px 48px;display:grid;gap:28px;align-items:center}
+.sp-hero h1{font-size:34px;line-height:1.15;color:#fff}
+.sp-hero h1 span{color:var(--sp-turquesa)}
+.sp-hero p{color:#c5d4e2;font-size:17px;margin-top:14px;max-width:560px}
+.sp-acoes{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.sp-local{display:flex;align-items:center;gap:6px;font-size:14px!important;color:#9fb4c8!important;margin-top:20px!important}
+.sp-arte{display:none;place-items:center;background:#1b3654;border-radius:20px;height:260px;color:var(--sp-turquesa)}
+.sp-secao{padding:44px 20px;max-width:1120px;margin:0 auto}
+.sp-secao h2{font-size:26px}
+.sp-sub{color:var(--sp-suave);margin:6px 0 22px!important;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sp-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.sp-card{border:1px solid #dbe3ea;border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.sp-foto{aspect-ratio:4/3;background:var(--sp-fundo);display:grid;place-items:center;color:#8aa0b1}
+.sp-foto img{width:100%;height:100%;object-fit:cover}
+.sp-card-texto{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.sp-card h3{font-size:17px}
+.sp-card-texto p{font-size:14px;color:var(--sp-suave)}
+.sp-preco{font-family:Sora,sans-serif;font-weight:700;font-size:19px;margin-top:auto}
+.sp-orcamento{font-weight:600;color:#08707e;margin-top:auto}
+.sp-cheio{width:100%;margin-top:8px;padding:11px}
+.sp-vazio{background:var(--sp-fundo);border-radius:14px;padding:24px;display:grid;gap:16px;justify-items:start}
+.sp-passos-fundo{max-width:none;background:var(--sp-fundo)}
+.sp-passos-fundo>*{max-width:1080px;margin-left:auto;margin-right:auto}
+.sp-passos{list-style:none;padding:0;margin:0 auto;display:grid;gap:14px}
+.sp-passos li{background:#fff;border-radius:14px;padding:20px;display:grid;gap:6px;color:var(--sp-turquesa)}
+.sp-passos b{color:var(--sp-texto);font-size:17px}
+.sp-passos span{color:var(--sp-suave);font-size:15px}
+.sp-materiais{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.sp-materiais li{border-left:4px solid var(--sp-turquesa);background:var(--sp-fundo);border-radius:0 10px 10px 0;padding:14px 16px;display:grid;gap:2px}
+.sp-materiais b{font-family:Sora,sans-serif}
+.sp-materiais span{color:var(--sp-suave);font-size:15px}
+.sp-contato{text-align:left}
+.sp-rodape{background:var(--sp-azul);color:#c5d4e2;padding:26px 20px 90px;display:grid;gap:14px;font-size:14px}
+.sp-rodape div{display:grid;gap:2px}
+.sp-rodape b{color:#fff;font-family:Sora,sans-serif}
+.sp-flutuante{position:fixed;right:18px;bottom:18px;z-index:30;width:58px;height:58px;border-radius:50%;background:var(--sp-laranja);color:#fff;display:grid;place-items:center;box-shadow:0 6px 18px #0003}
+.sp-flutuante:hover{background:var(--sp-laranja-escuro)}
+@media(min-width:760px){
+ .sp-menu{display:flex}
+ .sp-topo{padding:14px 32px}
+ .sp-hero{grid-template-columns:1.3fr 1fr;padding:64px max(32px,calc((100vw - 1120px)/2)) 72px}
+ .sp-hero h1{font-size:46px}
+ .sp-arte{display:grid}
+ .sp-secao{padding:56px 32px}
+ .sp-passos,.sp-materiais{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .sp-rodape{grid-template-columns:1fr auto;padding:28px max(32px,calc((100vw - 1120px)/2)) 28px}
+}
