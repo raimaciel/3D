@@ -471,7 +471,11 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Publicado de novo em 30/09/2026:** o ramo `claude/computador-windows` foi juntado à `main` (avanço direto, 17 commits, `c50be42..d3a6d37`) com autorização do dono. Workers Builds passou (com os 6 conjuntos de testes); `teste-acesso.sh` contra o ar: 9 de 9; rotas novas (`/api/auth/codigo`, `/api/usuarios`, `/api/perfil`) respondem 401 sem login. O banco de produção é separado do de teste: nada dos dados de teste foi junto. As tabelas novas (`user_status`, `user_perms`, `user_profile`, `profile_requests`, `recovery_codes`) nascem sozinhas no primeiro uso.
 
-**Falta:** o domínio. `fabricando3d.com.br` não tem endereço no DNS (em 28/09/2026 o `nslookup` não devolve nenhum IP).
+**Endereço `gestao3d.fabricando3d.com.br` no ar (30/09/2026).** O dono cadastrou como Custom Domain do Worker `3d`. **O painel mudou:** isso fica na aba **Domains** do Worker (Workers & Pages → 3d → Domains → Add Domain), não mais em Settings. Verificado: DNS responde, HTTPS com certificado válido, `teste-acesso.sh` 9 de 9. O `3d.ranbm3.workers.dev` continua ligado também.
+
+**Pendente, no painel (dono):** ligar **Always Use HTTPS** na zona `fabricando3d.com.br` (SSL/TLS → Edge Certificates). Em 30/09 o endereço com `http://` respondia 200 sem mandar para `https://`; o cookie de sessão só leva `Secure` em https, então um login feito em http viaja sem proteção.
+
+**Falta:** o site público em `fabricando3d.com.br` (o domínio raiz ainda não aponta para nada).
 
 **Recursos reais da conta, criados em 26/09/2026 e já gravados no `vite.config.ts`:** Worker `3d`, banco D1 `fabricando3d` (id `50c8c520-3ebe-447f-8502-10429660a661`) e bucket R2 `fabricando3d-arquivos`. O id do banco não é segredo — é só um identificador, e ninguém alcança o banco sem estar autenticado na conta. Deixá-lo no repositório poupa o dono de configurar variável de build no painel. O `.env` sobrepõe, para publicar noutro lugar.
 
