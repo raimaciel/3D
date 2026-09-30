@@ -475,6 +475,8 @@ O que mudou no projeto para isso ser possível: o `vite.config.ts` apontava para
 
 **Aconteceu em 30/09:** o dono abriu `http://gestao3d...` (sem cadeado, "Não seguro") e o login falhou com "Não foi possível entrar. Verifique sua conexão." (resposta que não chegou ou não era JSON). Pelo `https://` funcionou. Pelo curl, POST em http respondia normalmente, então a causa exata no navegador não foi isolada. Regra prática: **sempre https**. Vale considerar, no futuro, o próprio sistema redirecionar http para https, além do interruptor do painel.
 
+**Feito em 30/09 (dono, confirmado por ele):** o e-mail de login do admin no ar foi trocado do de teste para o de verdade, e o código de recuperação dele já foi gerado.
+
 **Feito em 30/09 (dono):** **Always Use HTTPS** ligado na zona (SSL/TLS → Edge Certificates). Verificado: `http://gestao3d...` responde 301 para `https://`. A mensagem "No access: Access to CSRs has not been granted" que aparece nessa tela é do recurso pago ACM e é inofensiva. HSTS ficou desligado de propósito, por ser difícil de desfazer. Registro antigo: `fabricando3d.com.br` (SSL/TLS → Edge Certificates). Em 30/09 o endereço com `http://` respondia 200 sem mandar para `https://`; o cookie de sessão só leva `Secure` em https, então um login feito em http viaja sem proteção.
 
 **Decisão do dono em 30/09/2026: o site completo fica em stand-by, e o domínio principal mostra "Em breve".** Pedido textual: "como é um site provisório, eu não quero que coloque no ar… landing page estática… em breve". Ficou assim, por endereço (`qualPagina` em `lib/site.ts`, 32 testes):
