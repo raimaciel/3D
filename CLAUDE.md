@@ -151,7 +151,9 @@ Verificado em Chromium, em 1400 px e em 390 px: a tela carrega sem erro de JavaS
 
 ## O OUTRO ponto de partida: o Gestão 3D (JÁ NO REPOSITÓRIO, em `gestao-3d/`)
 
-O dono **já tinha um sistema de gestão quase completo**, feito no construtor de apps do ChatGPT, importado aqui sem alteração. Ele cobre quase todos os módulos da lista: clientes, fornecedores, materiais com estoque e compras, impressoras, produtos, orçamentos, pedidos, produção em etapas e financeiro. Tem manual de uso em `gestao-3d/docs/`.
+O dono **já tinha um sistema de gestão quase completo**, feito no construtor de apps do ChatGPT, importado aqui sem alteração. Ele cobre quase todos os módulos da lista: clientes, fornecedores, materiais com estoque e compras, impressoras, produtos, orçamentos, pedidos, produção em etapas e financeiro. Tem manual de uso em `gestao-3d/docs/Manual_de_Uso_Gestao_3D.docx`, **do tempo do ChatGPT e hoje desatualizado** (não tem Precificação nova, Investimentos, Insumos, Ferramentas, Usuários, permissões, anexos, site).
+
+**Pedido do dono (02/10/2026), para o FIM da lista:** "depois que finalizamos tudo você faz um manual, um tutorial, como usar o Gestão 3D". Fazer só quando as funções pendentes estiverem prontas, para não nascer desatualizado. Escrever em português simples, pelas tarefas do dia a dia (pedido que chega pelo WhatsApp → orçamento → aprovar → produção → entregar → receber), com fotos das telas, pensando no celular. Proposta feita a ele: uma página **"Como usar" dentro do próprio sistema** (no menu, abre no celular, atualizada junto com o código), mais uma versão em PDF para imprimir ou mandar a um funcionário. Formato ainda não confirmado.
 
 **Não construa esses cadastros do zero.** O trabalho aqui é migrar e corrigir, não recomeçar.
 
