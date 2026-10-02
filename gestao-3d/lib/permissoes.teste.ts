@@ -31,6 +31,9 @@ ok('equipe padrão NÃO mexe em investimentos', !podeAcao('investment', undefine
 ok('equipe padrão NÃO muda configurações', !podeAcao('settings', undefined, padrao) && !podeAcao('company', undefined, padrao));
 ok('equipe padrão cadastra cliente', podeAcao('entity', 'customers', padrao));
 ok('só Materiais cadastra filamento, mas não cliente', podeAcao('entity', 'materials', ['Materiais']) && !podeAcao('entity', 'customers', ['Materiais']));
+ok('equipe padrão anexa e remove arquivo de pedido', podeAcao('attachFile', undefined, padrao) && podeAcao('removeFile', undefined, padrao));
+ok('só Pedidos (ou só Produção) também anexa', podeAcao('attachFile', undefined, ['Pedidos']) && podeAcao('removeFile', undefined, ['Produção']));
+ok('sem Pedidos nem Produção NÃO anexa', !podeAcao('attachFile', undefined, ['Orçamentos', 'Materiais']) && !podeAcao('removeFile', undefined, ['Financeiro']));
 ok('ação desconhecida é recusada', !podeAcao('apagarTudo', undefined, MODULOS));
 ok('sem módulo nenhum, nada passa', !podeAcao('quote', undefined, []));
 

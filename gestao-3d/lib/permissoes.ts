@@ -36,7 +36,7 @@ export function podeAcao(tipo: string, cadastro: string | undefined, mods: reado
   switch (tipo) {
     case 'quote': return tem(mods, 'Precificação', 'Orçamentos');
     case 'approve': return tem(mods, 'Orçamentos');
-    case 'production': case 'photo': return tem(mods, 'Produção', 'Pedidos');
+    case 'production': case 'photo': case 'attachFile': case 'removeFile': return tem(mods, 'Produção', 'Pedidos');
     case 'payment': case 'payPurchase': return tem(mods, 'Financeiro');
     case 'purchase': return tem(mods, 'Financeiro', 'Materiais');
     case 'movement': case 'supply': case 'supplyMovement': case 'removeSupply':

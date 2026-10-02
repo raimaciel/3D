@@ -226,5 +226,23 @@ export function applyAction(s:State,action:any):State{
   s.investments=s.investments.filter(x=>x.id!==id);
  }else if(action.type==='photo'){
   const o=ref(s.orders,action.id,'Pedido') as Order;const key=z.string().regex(/^\/api\/files\/[a-f0-9-]+$/).parse(action.key);o.photos.push(key);
+ }else if(action.type==='attachFile'){
+  // Anexar a um pedido JÁ existente (02/10/2026): o cliente mandou o STL depois
+  // de aprovar. O arquivo fica preso à peça, como na Precificação.
+  const o=ref(s.orders,action.id,'Pedido') as Order;
+  const item=o.items.find(i=>i.id===action.itemId);if(!item)throw new Error('Peça não encontrada no pedido.');
+  const arquivo=arquivoSchema.parse(action.arquivo);
+  item.arquivos=item.arquivos||[];
+  if(item.arquivos.some(a=>a.url===arquivo.url))throw new Error('Este arquivo já está anexado a esta peça.');
+  if(item.arquivos.length>=10)throw new Error('Cada peça aceita até 10 arquivos. Remova um antes de anexar outro.');
+  item.arquivos.push(arquivo);
+ }else if(action.type==='removeFile'){
+  // Tira o anexo da peça. O arquivo continua guardado na Cloudflare (decisão do
+  // dono): removido por engano, dá para recuperar.
+  const o=ref(s.orders,action.id,'Pedido') as Order;
+  const item=o.items.find(i=>i.id===action.itemId);if(!item)throw new Error('Peça não encontrada no pedido.');
+  const url=arquivoSchema.shape.url.parse(action.url);
+  if(!(item.arquivos||[]).some(a=>a.url===url))throw new Error('Este arquivo não está anexado a esta peça.');
+  item.arquivos=item.arquivos.filter(a=>a.url!==url);
  }else throw new Error('Operação desconhecida.');return s;
 }
